@@ -7,8 +7,10 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.*
+import net.malkowscy.model.Content
 import net.malkowscy.model.GameState
 import net.malkowscy.model.Message
+import net.malkowscy.model.Move
 
 typealias ConnectionObserver = (ConnectionStatus) -> Unit
 
@@ -150,5 +152,21 @@ class Session(
     suspend fun send(msg: Message) {
         val str = Json.encodeToString(msg)
         sendChannel.send(str)
+    }
+
+    suspend fun sendMove(move: Move) {
+        send(
+            Message(
+                type = Message.Type.MOVE,
+                timestamp = 0.toULong(),
+                content = Json.encodeToJsonElement(
+                    Content.MoveData.serializer(),
+                    Content.MoveData(
+                        roomName = roomName,
+                        move = move
+                    )
+                ).jsonObject
+            )
+        )
     }
 }

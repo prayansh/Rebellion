@@ -1,60 +1,13 @@
 package net.malkowscy.model
 
-import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.descriptors.PrimitiveKind
-import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
-import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
-
-@Serializable(with = ActionSerializer::class)
-sealed interface Action
-
-class ActionSerializer : KSerializer<Action> {
-    override val descriptor: SerialDescriptor
-        get() = PrimitiveSerialDescriptor("Action", PrimitiveKind.STRING)
-
-    override fun deserialize(decoder: Decoder): Action {
-        return UserAction.INCOME // TODO()
-    }
-
-    override fun serialize(encoder: Encoder, value: Action) {
-        when (value) {
-            is UserAction -> {
-                UserAction.serializer().serialize(encoder, value)
-            }
-            is CounterAction -> {
-                CounterAction.serializer().serialize(encoder, value)
-            }
-            is GameAction -> {
-                GameAction.serializer().serialize(encoder, value)
-            }
-        }
-    }
-
-}
-
-@Serializable
-enum class UserAction : Action {
-    INCOME, TAX, FOREIGN_AID,
-    STEAL,
-    EXCHANGE,
-    ASSASSINATE, COUP
-}
-
-@Serializable
-enum class CounterAction : Action {
-    BLOCK_FOREIGN_AID, BLOCK_STEAL, BLOCK_ASSASSINATION, CHALLENGE, PASS
-}
-
-@Serializable
-enum class GameAction : Action {
-    TURN, SURRENDER /* give up influence */
-}
 
 @Serializable
 sealed class Move {
+
+    interface Challengeable {
+        abstract val completed: String
+    }
 
     abstract val description: String // string description of the move
     abstract val player: Player // move issuer
@@ -79,14 +32,19 @@ sealed class Move {
         override val description: String = "${player.name} collected tax (3 coins)"
     }
 
+//    @Serializable
+//    data class Exchange2(override val player: Player, val oldRole: Role, val newRole: Role) : Move() {
+//        override val description: String = "${player.name} exchanged their role"
+//    }
+
     @Serializable
-    data class Steal(override val player: Player, val victim: Player) : Move() {
-        override val description: String = "${player.name} stole from ${victim.name} (2 coins)"
+    data class Exchange(override val player: Player, val changes: List<Pair<Role, Role>>) : Move() {
+        override val description: String = "${player.name} exchanged their role"
     }
 
     @Serializable
-    data class Exchange(override val player: Player, val oldRole: Role, val newRole: Role) : Move() {
-        override val description: String = "${player.name} exchanged their role"
+    data class Steal(override val player: Player, val victim: Player) : Move() {
+        override val description: String = "${player.name} stole from ${victim.name} (2 coins)"
     }
 
     @Serializable
@@ -115,13 +73,56 @@ sealed class Move {
     }
 
     @Serializable
-    data class Surrender(override val player: Player, val influence: Role) : Move() {
-        override val description: String = "${player.name} surrendered their ${influence.name} role"
+    data class Surrender(override val player: Player, val role: Role) : Move() {
+        override val description: String = "${player.name} surrendered their ${role.name} role"
     }
 
     @Serializable
-    data class Show(override val player: Player, val influence: Role, val move: Move): Move() {
+    data class Show(override val player: Player, val influence: Role, val move: Move) : Move() {
         override val description: String = "${player.name} showed their ${influence.name} role"
+    }
+
+    // is this move challengeable
+    fun isChallengeable(): Boolean {
+        return when (this) {
+            is Move.Assassinate,
+            is Move.Exchange,
+            is Move.Steal,
+            is Move.Block,
+            is Move.Tax -> {
+                true
+            }
+            else -> false
+        }
+    }
+
+    // Is this move blockable
+    fun isBlockable(): Boolean {
+        return when (this) {
+            is Move.Assassinate,
+            is Move.ForeignAid,
+            is Move.Steal -> {
+                true
+            }
+            else -> false
+        }
+    }
+
+    // who can perform this move
+    fun proofList(): List<Role> {
+        return when(this) {
+            is Assassinate -> listOf(Role.SNIPER)
+            is Exchange -> listOf(Role.DIPLOMAT)
+            is Steal -> listOf(Role.GENERAL)
+            is Tax -> listOf(Role.POLITICIAN)
+            is Block -> when(val a = this.action) {
+                is Assassinate -> listOf(Role.BODYGUARD)
+                is ForeignAid -> listOf(Role.POLITICIAN)
+                is Steal -> listOf(Role.DIPLOMAT, Role.GENERAL)
+                else -> emptyList()
+            }
+            else -> emptyList()
+        }
     }
 
 }
@@ -168,51 +169,12 @@ data class GameState(
     val deck: List<Role>,
     val currentPlayer: Int,
     val players: List<Player>,
-    val currentAction: Action = GameAction.TURN,
+//    val currentAction: Action = GameAction.TURN,
     val currentMove: Move?, // null when it's someone's turn
     val currentState: State,
     val logs: List<String>
-)
-
-fun availableActions(coins: Int): List<Action> {
-    return buildList {
-        if (coins >= 10) {
-            add(UserAction.COUP)
-        } else {
-            add(UserAction.TAX)
-            add(UserAction.INCOME)
-            add(UserAction.FOREIGN_AID)
-            add(UserAction.STEAL)
-            if (coins >= 7) {
-                add(UserAction.COUP)
-            }
-            if (coins >= 3) {
-                add(UserAction.ASSASSINATE)
-            }
-        }
-    }
-}
-
-fun Action.isBlockable(): Boolean {
-    return when (this) {
-        UserAction.FOREIGN_AID,
-        UserAction.STEAL,
-        UserAction.ASSASSINATE
-        -> true
-        else -> false
-    }
-}
-
-
-fun Action.isChallengeable(): Boolean {
-    return when (this) {
-        UserAction.TAX,
-        UserAction.STEAL,
-        UserAction.EXCHANGE,
-        UserAction.ASSASSINATE,
-        -> true
-        else -> false
-    }
+) {
+//    fun update(block: GameState.() -> Unit): GameState = this.copy().apply(block) TODO work on this later
 }
 
 @Serializable
@@ -251,9 +213,9 @@ sealed class State {
 //
 //    } // could this be replaced by WaitCounter(blockee, Move.Block())
 
-    // `player` is showing influence as a result of `challenge`
+    // `player` is showing influence as a result of `challenge`, influence must be oneOf `proofList`
     @Serializable
-    data class ShowInfluence(val player: Player, val challenge: Move.Challenge) : State() {
+    data class ShowInfluence(val player: Player, val challenge: Move.Challenge, val proofList: List<Role>) : State() {
 
     }
 

@@ -46,8 +46,20 @@ fun ClickableButton(text: String, onClick: (SyntheticMouseEvent)-> Unit) {
     Button(
         attrs = {
             onClick(onClick)
+            style {
+                margin(5.px)
+                padding(5.px)
+            }
         }
     ) {
         Text(text)
+    }
+}
+
+@Composable
+fun MyCheckbox(label: String, checked: MutableState<Boolean>) {
+    CheckboxInput(checked.value) {
+        onInput { event -> checked.value = event.value }
+        value(label)
     }
 }

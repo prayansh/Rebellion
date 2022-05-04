@@ -73,7 +73,7 @@ class Room(
     )
 
     val size get() = clients.size
-    var gameState: GameState? = null
+    lateinit var gameState: GameState
 
     init {
         subscribeToChannel(roomName)
@@ -250,17 +250,38 @@ fun Application.configureSockets(
                             println("Received exit message from $thisConnection")
                             break
                         }
-                        Message.Type.DATA -> {
+                        Message.Type.MOVE -> {
                             try {
                                 val data =
                                     Json.decodeFromJsonElement(Content.MoveData.serializer(), incomingMsg.content)
                                 val room = rooms[data.roomName]
-                                room?.handleGameData(data.move)
+                                room?.let {
+                                    val newState = it.handleGameData(data.move)
+                                    it.gameState = newState
+                                    println("Broadcasting to ${it.roomName}, room=$it")
+                                    // Broadcast to peeps
+                                    it.broadcast(
+                                        msg = Message(
+                                            type = Message.Type.GAME,
+                                            timestamp = Date().time.toULong(),
+                                            content = Json.encodeToJsonElement(
+                                                Content.GameData.serializer(),
+                                                Content.GameData(
+                                                    roomName = it.roomName,
+                                                    gameState = newState
+                                                )
+                                            ).jsonObject
+                                        )
+                                    )
+                                }
                             } catch (ex: Exception) {
                                 ex.printStackTrace()
                             }
                         }
-                        else -> continue // ignore
+                        else -> {
+                            println("Ignoring $incomingMsg")
+                            continue
+                        } // ignore
                     }
                 }
             } catch (e: Exception) {
@@ -276,8 +297,8 @@ fun Application.configureSockets(
 }
 
 @Suppress("DuplicatedCode")
-suspend fun Room.handleGameData(move: Move) {
-    val gs = gameState!!
+suspend fun Room.handleGameData(move: Move): GameState {
+    val gs = gameState
     var newGameState: GameState = gs
     gs.currentState.let { state ->
         when (state) {
@@ -301,19 +322,41 @@ suspend fun Room.handleGameData(move: Move) {
                     }
                     is Move.Coup -> {
                         newGameState = gs.copy(
+                            players = gs.players.map { p ->
+                                if (p == move.player) {
+                                    p.copy(coins = p.coins - 7)
+                                } else {
+                                    p
+                                }
+                            }, // Consume 7 coins
                             currentState = State.WaitSurrender(move.victim, move),
                             currentMove = move,
                             logs = gs.logs.toMutableList().apply { add(move.description) }
                         )
                     }
-                    is Move.ForeignAid,
-                    is Move.Tax,
-                    is Move.Steal,
-                    is Move.Exchange,
                     is Move.Assassinate -> {
                         // Wait for a counter from all players
                         newGameState = gs.copy(
+                            players = gs.players.map { p ->
+                                if (p == move.player) {
+                                    p.copy(coins = p.coins - 3)
+                                } else {
+                                    p
+                                }
+                            }, // Consume 3 coins
                             currentState = State.WaitCounter(gs.players, move),
+                            currentMove = move,
+                            logs = gs.logs.toMutableList()
+                                .apply { add(move.description) } // maybe add an attempt option
+                        )
+                    }
+                    is Move.ForeignAid,
+                    is Move.Tax,
+                    is Move.Steal,
+                    is Move.Exchange -> {
+                        // Wait for a counter from all players but the initiator
+                        newGameState = gs.copy(
+                            currentState = State.WaitCounter(gs.players.filterNot { it == move.player }, move),
                             currentMove = move,
                             logs = gs.logs.toMutableList()
                                 .apply { add(move.description) } // maybe add an attempt option
@@ -327,9 +370,22 @@ suspend fun Room.handleGameData(move: Move) {
             is State.WaitCounter -> {
                 when (move) {
                     is Move.Challenge -> {
-                        newGameState = gs.copy(
-                            currentState = State.ShowInfluence(move.action.player, move)
-                        )
+                        val proofList = move.proofList()
+                        val player = gs.players.find { it == move.action.player }!!
+                        val (r1, r2) = player.roles
+                        newGameState = if (proofList.any { it == r1.role || it == r2.role }) {
+                            // Player has the influence ask them to show
+                            gs.copy(
+                                currentState = State.ShowInfluence(move.action.player, move, proofList)
+                            )
+                        } else {
+                            // Player does not have influence ask them to surrender
+                            gs.copy(
+                                currentState = State.WaitSurrender(player, move)
+                            )
+                        }
+                        // based on prooflist if player doesnt have certain role,
+                        // then switch gameState to WaitSurrender
                     }
                     is Move.Block -> {
                         newGameState = gs.copy(
@@ -342,7 +398,7 @@ suspend fun Room.handleGameData(move: Move) {
                         // reduce players in wait queue
                         newGameState = gs.copy(
                             currentState = state.copy(
-                                players = state.players.toMutableList().apply { removeIf { it == move.player } }
+                                players = state.players.filterNot { it == move.player }
                             ),
                             currentMove = move,
                             logs = gs.logs.toMutableList().apply { add(move.description) }
@@ -357,7 +413,6 @@ suspend fun Room.handleGameData(move: Move) {
                         if (state.players.isEmpty()) {
                             val nextPlayer = (currentPlayer + 1) % players.size
                             val passedMove = state.move
-                            // TODO() wait is over do the the thing
                             when (passedMove) {
                                 is Move.ForeignAid -> {
                                     newGameState = gs.copy(
@@ -410,15 +465,28 @@ suspend fun Room.handleGameData(move: Move) {
                                         logs = gs.logs.toMutableList().apply { add(passedMove.description + " PASSED") }
                                     )
                                 }
-                                is Move.Block -> TODO()
-                                is Move.Coup -> TODO()
-                                is Move.Assassinate -> TODO()
+                                is Move.Block -> {
+                                    // Move on to next player, add to logs
+                                    newGameState = gs.copy(
+                                        currentPlayer = nextPlayer, // next player in turn
+                                        currentMove = null, // consume move
+                                        currentState = State.Turn(gs.players[nextPlayer]),
+                                        logs = gs.logs.toMutableList().apply { add(passedMove.description) }
+                                    )
+                                }
+                                is Move.Assassinate -> {
+                                    newGameState = gs.copy(
+                                        currentState = State.WaitSurrender(passedMove.victim, move),
+                                        currentMove = move,
+                                        logs = gs.logs.toMutableList().apply { add(move.description) }
+                                    )
+                                }
                                 is Move.Exchange -> {
                                     newGameState = gs.copy(
                                         currentState = State.ExchangeInfluence(
-                                            player = move.player,
+                                            player = passedMove.player,
                                             choices = listOf(deck[0], deck[1]), // first in the new deck
-                                            move = move.move
+                                            move = passedMove
                                         )
                                     )
                                 }
@@ -433,25 +501,33 @@ suspend fun Room.handleGameData(move: Move) {
             is State.WaitSurrender -> {
                 when (move) {
                     is Move.Surrender -> {
-                        val nextPlayer = (gs.currentPlayer + 1) % gs.players.size
-                        val delRole = move.influence
-                        newGameState = gs.copy(
-                            players = gs.players.map { p ->
-                                if (p == move.player) {
-                                    val roles = p.roles.let {
-                                        if (it.first.alive && it.first.role == delRole) {
-                                            it.first.copy(alive = false) to it.second
-                                        } else if (it.second.alive && it.second.role == delRole) {
-                                            it.first to it.second.copy(alive = false)
-                                        } else {
-                                            it
-                                        }
+                        val delRole = move.role
+                        val newPlayersList = gs.players.map { p ->
+                            if (p == move.player) {
+                                val roles = p.roles.let {
+                                    if (it.first.alive && it.first.role == delRole) {
+                                        it.first.copy(alive = false) to it.second
+                                    } else if (it.second.alive && it.second.role == delRole) {
+                                        it.first to it.second.copy(alive = false)
+                                    } else {
+                                        it
                                     }
-                                    p.copy(roles = roles) // remove influence
-                                } else {
-                                    p
                                 }
-                            },
+                                p.copy(roles = roles) // remove influence
+                            } else {
+                                p
+                            }
+                        }.filterNot { p ->
+                            p.roles.toList().all { !it.alive }
+                        }
+                        // move to start of list if last player got booted, else stay at current
+                        val nextPlayer = if (gs.currentPlayer == gs.players.size - 1) {
+                            0
+                        } else {
+                            gs.currentPlayer
+                        }
+                        newGameState = gs.copy(
+                            players = newPlayersList,
                             currentPlayer = nextPlayer, // next player in turn
                             currentMove = null, // consume move
                             currentState = State.Turn(gs.players[nextPlayer]),
@@ -467,27 +543,30 @@ suspend fun Room.handleGameData(move: Move) {
                 when (move) {
                     is Move.Exchange -> {
                         val nextPlayer = (gs.currentPlayer + 1) % gs.players.size
-                        val newRole = move.newRole
-                        val oldRole = move.oldRole
+                        val oldRoles = move.changes.map { it.first }
+                        val newRoles = move.changes.map { it.second }
                         val newDeck = gs.deck.toMutableList().apply {
-                            add(oldRole)
-                            remove(newRole)
+                            newRoles.forEach {
+                                remove(it)
+                            }
+                            oldRoles.forEach {
+                                add(it)
+                            }
                             shuffle()
                         }
                         newGameState = gs.copy(
                             deck = newDeck,
                             players = gs.players.map { p ->
                                 if (p == move.player) {
-                                    val roles = p.roles.let {
-                                        if (it.first.alive && it.first.role == oldRole) {
-                                            it.first.copy(role = newRole) to it.second
-                                        } else if (it.second.alive && it.second.role == oldRole) {
-                                            it.first to it.second.copy(role = newRole)
-                                        } else {
-                                            it
+                                    var (r1, r2) = p.roles
+                                    move.changes.forEach {
+                                        if (r1.alive && r1.role == it.first) {
+                                            r1 = r1.copy(role = it.second)
+                                        } else if (r2.alive && r2.role == it.first) {
+                                            r2 = r2.copy(role = it.second)
                                         }
                                     }
-                                    p.copy(roles = roles) // exchange influence
+                                    p.copy(roles = r1 to r2) // exchange influence
                                 } else {
                                     p
                                 }
@@ -516,7 +595,7 @@ suspend fun Room.handleGameData(move: Move) {
                             currentState = State.ExchangeInfluence(
                                 player = move.player,
                                 choices = listOf(deck.first()), // first in the new deck
-                                move = move.move
+                                move = move
                             )
                         )
                     }
@@ -527,7 +606,7 @@ suspend fun Room.handleGameData(move: Move) {
             }
         }
     }
-
+    return newGameState
 }
 
 fun newGameState(connections: Set<Connection>): GameState {
@@ -552,7 +631,6 @@ fun newGameState(connections: Set<Connection>): GameState {
         deck = deck,
         players = players,
         currentPlayer = 0,
-        currentAction = GameAction.TURN, // TODO
         currentState = State.Turn(players[0]),
         currentMove = null,
         logs = mutableListOf()

@@ -10,7 +10,10 @@ class Message(
     val timestamp: ULong
 ) {
     enum class Type {
-        CONNECT, CREATE, JOIN, START, DATA, EXIT, ERROR
+        CONNECT, CREATE, JOIN, START,
+        MOVE, // from client
+        GAME, // from server
+        EXIT, ERROR
     }
 }
 
@@ -37,7 +40,7 @@ sealed class Content {
     @Serializable
     data class MoveData(
         val roomName: String,
-        val player: Player,
+//        val player: Player,
         val move: Move
     ) : Content()
 
