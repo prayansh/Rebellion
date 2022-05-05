@@ -370,7 +370,7 @@ suspend fun Room.handleGameData(move: Move): GameState {
             is State.WaitCounter -> {
                 when (move) {
                     is Move.Challenge -> {
-                        val proofList = move.proofList()
+                        val proofList = move.action.proofList()
                         val player = gs.players.find { it == move.action.player }!!
                         val (r1, r2) = player.roles
                         newGameState = if (proofList.any { it == r1.role || it == r2.role }) {
@@ -554,28 +554,43 @@ suspend fun Room.handleGameData(move: Move): GameState {
                             }
                             shuffle()
                         }
-                        newGameState = gs.copy(
-                            deck = newDeck,
-                            players = gs.players.map { p ->
-                                if (p == move.player) {
-                                    var (r1, r2) = p.roles
-                                    move.changes.forEach {
-                                        if (r1.alive && r1.role == it.first) {
-                                            r1 = r1.copy(role = it.second)
-                                        } else if (r2.alive && r2.role == it.first) {
-                                            r2 = r2.copy(role = it.second)
-                                        }
+                        val newPlayers = gs.players.map { p ->
+                            if (p == move.player) {
+                                var (r1, r2) = p.roles
+                                move.changes.forEach {
+                                    if (r1.alive && r1.role == it.first) {
+                                        r1 = r1.copy(role = it.second)
+                                    } else if (r2.alive && r2.role == it.first) {
+                                        r2 = r2.copy(role = it.second)
                                     }
-                                    p.copy(roles = r1 to r2) // exchange influence
-                                } else {
-                                    p
                                 }
-                            },
-                            currentPlayer = nextPlayer, // next player in turn
-                            currentMove = null, // consume move
-                            currentState = State.Turn(gs.players[nextPlayer]),
-                            logs = gs.logs.toMutableList().apply { add(move.description) }
-                        )
+                                p.copy(roles = r1 to r2) // exchange influence
+                            } else {
+                                p
+                            }
+                        }
+                        when (val m = state.move) {
+                            is Move.Show -> {
+                                // Make challenger surrender their card
+                                newGameState = gs.copy(
+                                    deck = newDeck,
+                                    players = newPlayers,
+                                    currentState = State.WaitSurrender(m.challenge.player, m),
+                                    logs = gs.logs.toMutableList().apply { add(move.description) }
+                                )
+                            }
+                            is Move.Exchange -> {
+                                newGameState = gs.copy(
+                                    deck = newDeck,
+                                    players = newPlayers,
+                                    currentPlayer = nextPlayer, // next player in turn
+                                    currentMove = null, // consume move
+                                    currentState = State.Turn(gs.players[nextPlayer]),
+                                    logs = gs.logs.toMutableList().apply { add(move.description) }
+                                )
+                            }
+                            else -> TODO("Nothing to do $state, $move")
+                        }
                     }
                     else -> {
                         println("Bad move received: ($move, $gs)")

@@ -78,7 +78,7 @@ sealed class Move {
     }
 
     @Serializable
-    data class Show(override val player: Player, val influence: Role, val move: Move) : Move() {
+    data class Show(override val player: Player, val influence: Role, val challenge: Challenge) : Move() {
         override val description: String = "${player.name} showed their ${influence.name} role"
     }
 

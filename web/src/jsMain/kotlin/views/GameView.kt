@@ -94,16 +94,32 @@ fun GameView(session: Session) {
                                     }
                                 }
                                 is Move.Exchange -> {
-                                    val choices = buildList {
+                                    val roles = buildList {
                                         addAll(state.choices)
                                         add(myself.roles.first.role)
                                         add(myself.roles.second.role)
                                     }
-                                    val chosen = choices.map { mutableStateOf(false) }
+                                    val choices = roles.map { it to mutableStateOf(false) }
                                     Div {
                                         Text("Choose upto 2 influences to keep")
-                                        choices.forEachIndexed { idx, choice ->
-                                            MyCheckbox(choice.name, chosen[idx])
+                                        Div(attrs = {
+                                            style {
+                                                display(DisplayStyle.Flex); flexDirection(FlexDirection.Column)
+                                            }
+                                        }) {
+                                            choices.forEach { choice ->
+                                                MyCheckbox(choice.first.name, choice.second)
+                                            }// TODO ensure only 2 are selected
+                                        }
+                                        ClickableButton("Submit") {
+                                            scope.launch {
+                                                val changes =
+                                                    choices.filter { it.second.value }
+                                                        .zip(choices.filter { !it.second.value }) { a, b ->
+                                                            b.first to a.first
+                                                        }
+                                                session.sendMove(Move.Exchange(myself, changes))
+                                            }
                                         }
                                     }
                                 }
@@ -266,7 +282,7 @@ fun ActionsCard(session: Session, gameState: GameState) {
                             UserAction.EXCHANGE -> {
                                 scope.launch {
                                     // cant exactly send move exchange, might need an intermediate
-//                                  session.sendMove(Move.Exchange())
+                                    session.sendMove(Move.Exchange(me, emptyList()))
                                 }
                             }
                         }
