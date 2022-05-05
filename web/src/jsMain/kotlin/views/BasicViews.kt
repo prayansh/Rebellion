@@ -3,9 +3,11 @@ package views
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.web.events.SyntheticMouseEvent
+import org.jetbrains.compose.web.attributes.AttrsBuilder
 import org.jetbrains.compose.web.attributes.InputType
 import org.jetbrains.compose.web.css.*
 import org.jetbrains.compose.web.dom.*
+import org.w3c.dom.HTMLSpanElement
 
 @Composable
 fun InputText(label: String, text: MutableState<String>) {
@@ -42,7 +44,7 @@ fun ColumnDiv() {
 }
 
 @Composable
-fun ClickableButton(text: String, onClick: (SyntheticMouseEvent)-> Unit) {
+fun ClickableButton(text: String, onClick: (SyntheticMouseEvent) -> Unit) {
     Button(
         attrs = {
             onClick(onClick)
@@ -65,3 +67,12 @@ fun MyCheckbox(label: String, checked: MutableState<Boolean>) {
         Text(label)
     }
 }
+
+@Composable
+fun MyLabel(label: String, fontSize: Int, attrs: (AttrsBuilder<HTMLSpanElement>.() -> Unit)? = null) {
+    Span(attrs = { style { fontSize(fontSize.px) }; attrs?.let { this.apply(attrs) } }) {
+        Text(label)
+    }
+}
+
+// TODO potentially add a style + function to concatenate styles
