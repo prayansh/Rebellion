@@ -145,22 +145,14 @@ data class Player(
     val coins: Int,
     val color: String
 ) {
-    override fun equals(other: Any?): Boolean {
+    infix fun sameAs(other: Player?): Boolean {
         if (this === other) return true
         if (other == null || this::class != other::class) return false
-
-        other as Player
 
         if (name != other.name) return false
         if (color != other.color) return false
 
         return true
-    }
-
-    override fun hashCode(): Int {
-        var result = name.hashCode()
-        result = 31 * result + color.hashCode()
-        return result
     }
 }
 

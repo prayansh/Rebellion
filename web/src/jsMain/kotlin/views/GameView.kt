@@ -28,17 +28,17 @@ fun GameView(session: Session) {
             }
         }
     }
-    val me by derivedStateOf { gameState.players.find { it.name == session.userName } }
+    val me by mutableStateOf(gameState.players.find { it.name == session.userName }, referentialEqualityPolicy())
     Div(attrs = { style { display(DisplayStyle.Flex) } }) {
         Div(attrs = { classes(AppStylesheet.peerList) }) {
             gameState.players.forEachIndexed { idx, player ->
-                if (player != me) { // Filter this user
-                    PeerCard(gameState.currentPlayer == idx, player)
-                }
+                UserList(gameState.currentPlayer == idx, player)
             }
         }
+
         Div(attrs = { classes(AppStylesheet.middleCol) }) {
             me?.let { myself ->
+                println("PRAY $myself")
                 UserCard(myself)
                 when (val state = gameState.currentState) {
                     is State.Turn -> {
@@ -174,14 +174,16 @@ fun GameView(session: Session) {
 
 @Composable
 fun UserCard(me: Player) {
+    println("PRAY - $me")
     Div(attrs = {
         style {
             border(2.px, LineStyle.Solid, Color.black);
             display(DisplayStyle.Flex); flexDirection(FlexDirection.Column)
             alignItems(AlignItems.Center); justifyContent(JustifyContent.Center)
+            backgroundColor(me.color.css)
         }
     }) {
-        Span(attrs = { style { backgroundColor(Color.cyan); fontSize(38.px); } }) {
+        Span(attrs = { style { fontSize(38.px); } }) {
             Text("Your Influences")
         }
         Div(attrs = { style { display(DisplayStyle.Flex); width(70.percent) } }) {
@@ -215,7 +217,7 @@ fun UserCard(me: Player) {
 }
 
 @Composable
-fun PeerCard(
+fun UserList(
     isActivePlayer: Boolean,
     player: Player
 ) {

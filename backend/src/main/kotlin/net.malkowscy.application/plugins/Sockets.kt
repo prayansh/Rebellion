@@ -308,7 +308,7 @@ suspend fun Room.handleGameData(move: Move): GameState {
                         val nextPlayer = (gs.currentPlayer + 1) % gs.players.size
                         newGameState = gs.copy(
                             players = gs.players.map { p ->
-                                if (p == move.player) {
+                                if (p sameAs move.player) {
                                     p.copy(coins = p.coins + 1)
                                 } else {
                                     p
@@ -323,7 +323,7 @@ suspend fun Room.handleGameData(move: Move): GameState {
                     is Move.Coup -> {
                         newGameState = gs.copy(
                             players = gs.players.map { p ->
-                                if (p == move.player) {
+                                if (p sameAs move.player) {
                                     p.copy(coins = p.coins - 7)
                                 } else {
                                     p
@@ -338,7 +338,7 @@ suspend fun Room.handleGameData(move: Move): GameState {
                         // Wait for a counter from all players
                         newGameState = gs.copy(
                             players = gs.players.map { p ->
-                                if (p == move.player) {
+                                if (p sameAs move.player) {
                                     p.copy(coins = p.coins - 3)
                                 } else {
                                     p
@@ -356,7 +356,7 @@ suspend fun Room.handleGameData(move: Move): GameState {
                     is Move.Exchange -> {
                         // Wait for a counter from all players but the initiator
                         newGameState = gs.copy(
-                            currentState = State.WaitCounter(gs.players.filterNot { it == move.player }, move),
+                            currentState = State.WaitCounter(gs.players.filterNot { it sameAs move.player }, move),
                             currentMove = move,
                             logs = gs.logs.toMutableList()
                                 .apply { add(move.description) } // maybe add an attempt option
@@ -371,7 +371,7 @@ suspend fun Room.handleGameData(move: Move): GameState {
                 when (move) {
                     is Move.Challenge -> {
                         val proofList = move.action.proofList()
-                        val player = gs.players.find { it == move.action.player }!!
+                        val player = gs.players.find { it sameAs move.action.player }!!
                         val (r1, r2) = player.roles
                         newGameState = if (proofList.any { it == r1.role || it == r2.role }) {
                             // Player has the influence ask them to show
@@ -389,7 +389,7 @@ suspend fun Room.handleGameData(move: Move): GameState {
                     }
                     is Move.Block -> {
                         newGameState = gs.copy(
-                            currentState = State.WaitCounter(gs.players, move),
+                            currentState = State.WaitCounter(gs.players.filterNot { it sameAs move.player }, move),
                             currentMove = move,
                             logs = gs.logs.toMutableList().apply { add(move.description) }
                         )
@@ -398,7 +398,7 @@ suspend fun Room.handleGameData(move: Move): GameState {
                         // reduce players in wait queue
                         newGameState = gs.copy(
                             currentState = state.copy(
-                                players = state.players.filterNot { it == move.player }
+                                players = state.players.filterNot { it sameAs move.player }
                             ),
                             currentMove = move,
                             logs = gs.logs.toMutableList().apply { add(move.description) }
@@ -417,7 +417,7 @@ suspend fun Room.handleGameData(move: Move): GameState {
                                 is Move.ForeignAid -> {
                                     newGameState = gs.copy(
                                         players = gs.players.map { p ->
-                                            if (p == passedMove.player) {
+                                            if (p sameAs passedMove.player) {
                                                 p.copy(coins = p.coins + 2)
                                             } else {
                                                 p
@@ -432,7 +432,7 @@ suspend fun Room.handleGameData(move: Move): GameState {
                                 is Move.Tax -> {
                                     newGameState = gs.copy(
                                         players = gs.players.map { p ->
-                                            if (p == passedMove.player) {
+                                            if (p sameAs passedMove.player) {
                                                 p.copy(coins = p.coins + 3)
                                             } else {
                                                 p
@@ -447,16 +447,12 @@ suspend fun Room.handleGameData(move: Move): GameState {
                                 is Move.Steal -> {
                                     newGameState = gs.copy(
                                         players = gs.players.map { p ->
-                                            when (p) {
-                                                passedMove.player -> {
-                                                    p.copy(coins = p.coins + 2)
-                                                }
-                                                passedMove.victim -> {
-                                                    p.copy(coins = p.coins - 2)
-                                                }
-                                                else -> {
-                                                    p
-                                                }
+                                            if (p sameAs passedMove.player) {
+                                                p.copy(coins = p.coins + 2)
+                                            } else if (p sameAs passedMove.victim) {
+                                                p.copy(coins = p.coins - 2)
+                                            } else {
+                                                p
                                             }
                                         }, // Exchange 2 coins from victim to player
                                         currentPlayer = nextPlayer, // next player in turn
@@ -503,7 +499,7 @@ suspend fun Room.handleGameData(move: Move): GameState {
                     is Move.Surrender -> {
                         val delRole = move.role
                         val newPlayersList = gs.players.map { p ->
-                            if (p == move.player) {
+                            if (p sameAs move.player) {
                                 val roles = p.roles.let {
                                     if (it.first.alive && it.first.role == delRole) {
                                         it.first.copy(alive = false) to it.second
@@ -555,7 +551,7 @@ suspend fun Room.handleGameData(move: Move): GameState {
                             shuffle()
                         }
                         val newPlayers = gs.players.map { p ->
-                            if (p == move.player) {
+                            if (p sameAs move.player) {
                                 var (r1, r2) = p.roles
                                 move.changes.forEach {
                                     if (r1.alive && r1.role == it.first) {
