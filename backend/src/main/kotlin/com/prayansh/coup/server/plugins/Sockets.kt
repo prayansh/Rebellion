@@ -1,5 +1,6 @@
-package net.malkowscy.application.plugins
+package com.prayansh.coup.server.plugins
 
+import com.prayansh.coup.model.*
 import io.ktor.server.application.*
 import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
@@ -7,16 +8,16 @@ import io.ktor.websocket.*
 import io.lettuce.core.ExperimentalLettuceCoroutinesApi
 import io.lettuce.core.pubsub.RedisPubSubAdapter
 import io.lettuce.core.pubsub.StatefulRedisPubSubConnection
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.future.await
+import kotlinx.coroutines.launch
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.*
 import java.time.Duration
 import java.util.*
 import java.util.concurrent.atomic.AtomicInteger
-import kotlinx.coroutines.future.await
-import kotlinx.serialization.json.*
-import net.malkowscy.model.*
-import kotlin.collections.LinkedHashMap
 import kotlin.random.Random
 
 class Connection(val session: DefaultWebSocketSession) {

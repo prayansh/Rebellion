@@ -5,12 +5,14 @@ import Session
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import com.prayansh.coup.model.GameState
+import com.prayansh.coup.model.Message
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-import net.malkowscy.model.GameState
-import net.malkowscy.model.Message
 import org.jetbrains.compose.web.css.*
-import org.jetbrains.compose.web.dom.*
+import org.jetbrains.compose.web.dom.Button
+import org.jetbrains.compose.web.dom.Div
+import org.jetbrains.compose.web.dom.Text
 import scope
 
 @Composable

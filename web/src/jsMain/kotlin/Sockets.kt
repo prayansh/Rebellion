@@ -1,3 +1,4 @@
+import com.prayansh.coup.model.Message
 import io.ktor.client.*
 import io.ktor.client.features.websocket.*
 import io.ktor.http.*
@@ -7,7 +8,6 @@ import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-import net.malkowscy.model.Message
 
 suspend fun HttpClient.setupSession(readChannel: SendChannel<String>, sendChannel: ReceiveChannel<String>) {
     println("Starting websocket connection")

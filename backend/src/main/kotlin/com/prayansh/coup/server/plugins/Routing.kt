@@ -1,10 +1,9 @@
-package net.malkowscy.application.plugins
+package com.prayansh.coup.server.plugins
 
 import io.ktor.server.application.*
 import io.ktor.server.http.content.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import net.malkowscy.model.Message
 import java.text.SimpleDateFormat
 import java.util.*
 

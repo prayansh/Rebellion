@@ -1,16 +1,14 @@
-import io.ktor.client.features.websocket.*
-import io.ktor.http.cio.websocket.*
+import com.prayansh.coup.model.Content
+import com.prayansh.coup.model.GameState
+import com.prayansh.coup.model.Message
+import com.prayansh.coup.model.Move
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.withTimeout
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
-import net.malkowscy.model.Content
-import net.malkowscy.model.GameState
-import net.malkowscy.model.Message
-import net.malkowscy.model.Move
 
 typealias ConnectionObserver = (ConnectionStatus) -> Unit
 

@@ -1,4 +1,4 @@
-package net.malkowscy.model
+package com.prayansh.coup.model
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject

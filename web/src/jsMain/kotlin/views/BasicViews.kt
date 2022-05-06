@@ -5,7 +5,10 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.web.events.SyntheticMouseEvent
 import org.jetbrains.compose.web.attributes.AttrsBuilder
 import org.jetbrains.compose.web.attributes.InputType
-import org.jetbrains.compose.web.css.*
+import org.jetbrains.compose.web.css.fontSize
+import org.jetbrains.compose.web.css.margin
+import org.jetbrains.compose.web.css.padding
+import org.jetbrains.compose.web.css.px
 import org.jetbrains.compose.web.dom.*
 import org.w3c.dom.HTMLSpanElement
 

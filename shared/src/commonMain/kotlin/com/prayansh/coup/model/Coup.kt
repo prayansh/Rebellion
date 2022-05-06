@@ -1,4 +1,4 @@
-package net.malkowscy.model
+package com.prayansh.coup.model
 
 import kotlinx.serialization.Serializable
 
@@ -85,11 +85,11 @@ sealed class Move {
     // is this move challengeable
     fun isChallengeable(): Boolean {
         return when (this) {
-            is Move.Assassinate,
-            is Move.Exchange,
-            is Move.Steal,
-            is Move.Block,
-            is Move.Tax -> {
+            is Assassinate,
+            is Exchange,
+            is Steal,
+            is Block,
+            is Tax -> {
                 true
             }
             else -> false
@@ -99,9 +99,9 @@ sealed class Move {
     // Is this move blockable
     fun isBlockable(): Boolean {
         return when (this) {
-            is Move.Assassinate,
-            is Move.ForeignAid,
-            is Move.Steal -> {
+            is Assassinate,
+            is ForeignAid,
+            is Steal -> {
                 true
             }
             else -> false

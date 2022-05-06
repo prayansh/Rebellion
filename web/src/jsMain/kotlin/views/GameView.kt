@@ -1,17 +1,21 @@
 package views
 
+import AppStylesheet
 import Session
 import UserAction
 import androidx.compose.runtime.*
 import availableActions
+import com.prayansh.coup.model.*
+import com.prayansh.coup.model.State
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-import net.malkowscy.model.*
-import net.malkowscy.model.State
 import org.jetbrains.compose.web.ExperimentalComposeWebApi
 import org.jetbrains.compose.web.css.*
-import org.jetbrains.compose.web.dom.*
+import org.jetbrains.compose.web.dom.Button
+import org.jetbrains.compose.web.dom.Div
+import org.jetbrains.compose.web.dom.Span
+import org.jetbrains.compose.web.dom.Text
 import scope
 
 @Composable

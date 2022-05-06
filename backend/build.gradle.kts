@@ -5,7 +5,7 @@ plugins {
 
 
 application {
-	mainClass.set("net.malkowscy.application.ServerKt")
+	mainClass.set("com.prayansh.coup.server.ServerKt")
 }
 val ktorVersion = "1.6.7"
 dependencies {

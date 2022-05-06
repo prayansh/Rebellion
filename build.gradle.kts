@@ -2,7 +2,7 @@ plugins {
 	`kotlin-dsl`
 }
 
-group = "net.malkowscy"
+group = "com.prayansh.coup"
 version = "1.0-SNAPSHOT"
 
 allprojects {

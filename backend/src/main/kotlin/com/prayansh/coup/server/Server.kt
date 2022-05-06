@@ -1,5 +1,7 @@
-package net.malkowscy.application
+package com.prayansh.coup.server
 
+import com.prayansh.coup.server.plugins.configureRouting
+import com.prayansh.coup.server.plugins.configureSockets
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
@@ -10,8 +12,6 @@ import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.lettuce.core.RedisClient
-import net.malkowscy.application.plugins.configureRouting
-import net.malkowscy.application.plugins.configureSockets
 
 fun main() {
     val redisClient = RedisClient.create("redis://password@localhost:6379/0")

@@ -1,10 +1,9 @@
 @file:Suppress("DuplicatedCode")
 
-package net.malkowscy.application.coup
+package com.prayansh.coup.server
 
-import net.malkowscy.model.GameState
-import net.malkowscy.model.Move
-import net.malkowscy.model.State
+import com.prayansh.coup.model.GameState
+import com.prayansh.coup.model.Move
 
 // Updating game state due to incoming move
 fun updateGameState(gameState: GameState, move: Move): GameState {
