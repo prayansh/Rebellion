@@ -59,10 +59,11 @@ fun ClickableButton(text: String, onClick: (SyntheticMouseEvent) -> Unit) {
 }
 
 @Composable
-fun MyCheckbox(label: String, checked: MutableState<Boolean>) {
+fun MyCheckbox(label: String, checked: MutableState<Boolean>, disabled: Boolean) {
     Div {
         CheckboxInput(checked.value) {
             onInput { event -> checked.value = event.value }
+            if (disabled) attr("disabled", "")
         }
         Text(label)
     }

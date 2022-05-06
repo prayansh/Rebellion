@@ -161,8 +161,6 @@ data class GameState(
     val deck: List<Role>,
     val currentPlayer: Int,
     val players: List<Player>,
-//    val currentAction: Action = GameAction.TURN,
-    val currentMove: Move?, // null when it's someone's turn
     val currentState: State,
     val logs: List<String>
 ) {

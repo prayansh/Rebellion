@@ -70,7 +70,7 @@ fun CreateRoom(session: Session, setScreenState: (ScreenState) -> Unit) {
                 }
             }
         ) {
-            Text("Waiting for players")
+            Text("Waiting for players (Code is ${session.roomName})")
             ClickableButton("Start", onClick = { event ->
                 scope.launch {
                     session.start()

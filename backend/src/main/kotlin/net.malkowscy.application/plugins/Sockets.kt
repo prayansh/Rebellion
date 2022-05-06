@@ -315,7 +315,6 @@ suspend fun Room.handleGameData(move: Move): GameState {
                                 }
                             }, // Add 1 coin to that player
                             currentPlayer = nextPlayer, // next player in turn
-                            currentMove = null, // consume move
                             currentState = State.Turn(gs.players[nextPlayer]),
                             logs = gs.logs.toMutableList().apply { add(move.description) }
                         )
@@ -330,7 +329,6 @@ suspend fun Room.handleGameData(move: Move): GameState {
                                 }
                             }, // Consume 7 coins
                             currentState = State.WaitSurrender(move.victim, move),
-                            currentMove = move,
                             logs = gs.logs.toMutableList().apply { add(move.description) }
                         )
                     }
@@ -345,9 +343,8 @@ suspend fun Room.handleGameData(move: Move): GameState {
                                 }
                             }, // Consume 3 coins
                             currentState = State.WaitCounter(gs.players, move),
-                            currentMove = move,
                             logs = gs.logs.toMutableList()
-                                .apply { add(move.description) } // maybe add an attempt option
+                                .apply { add("Attempt: " + move.description) } // maybe add an attempt option
                         )
                     }
                     is Move.ForeignAid,
@@ -357,9 +354,8 @@ suspend fun Room.handleGameData(move: Move): GameState {
                         // Wait for a counter from all players but the initiator
                         newGameState = gs.copy(
                             currentState = State.WaitCounter(gs.players.filterNot { it sameAs move.player }, move),
-                            currentMove = move,
                             logs = gs.logs.toMutableList()
-                                .apply { add(move.description) } // maybe add an attempt option
+                                .apply { add("Attempt: " + move.description) } // maybe add an attempt option
                         )
                     }
                     else -> {
@@ -390,8 +386,7 @@ suspend fun Room.handleGameData(move: Move): GameState {
                     is Move.Block -> {
                         newGameState = gs.copy(
                             currentState = State.WaitCounter(gs.players.filterNot { it sameAs move.player }, move),
-                            currentMove = move,
-                            logs = gs.logs.toMutableList().apply { add(move.description) }
+                            logs = gs.logs.toMutableList().apply { add("Attempt: " + move.description) }
                         )
                     }
                     is Move.Pass -> {
@@ -400,7 +395,6 @@ suspend fun Room.handleGameData(move: Move): GameState {
                             currentState = state.copy(
                                 players = state.players.filterNot { it sameAs move.player }
                             ),
-                            currentMove = move,
                             logs = gs.logs.toMutableList().apply { add(move.description) }
                         )
                     }
@@ -424,7 +418,6 @@ suspend fun Room.handleGameData(move: Move): GameState {
                                             }
                                         }, // Add 2 coin to that player
                                         currentPlayer = nextPlayer, // next player in turn
-                                        currentMove = null, // consume move
                                         currentState = State.Turn(gs.players[nextPlayer]),
                                         logs = gs.logs.toMutableList().apply { add(passedMove.description + " PASSED") }
                                     )
@@ -439,7 +432,6 @@ suspend fun Room.handleGameData(move: Move): GameState {
                                             }
                                         }, // Add 3 coin to that player
                                         currentPlayer = nextPlayer, // next player in turn
-                                        currentMove = null, // consume move
                                         currentState = State.Turn(gs.players[nextPlayer]),
                                         logs = gs.logs.toMutableList().apply { add(passedMove.description + " PASSED") }
                                     )
@@ -456,7 +448,6 @@ suspend fun Room.handleGameData(move: Move): GameState {
                                             }
                                         }, // Exchange 2 coins from victim to player
                                         currentPlayer = nextPlayer, // next player in turn
-                                        currentMove = null, // consume move
                                         currentState = State.Turn(gs.players[nextPlayer]),
                                         logs = gs.logs.toMutableList().apply { add(passedMove.description + " PASSED") }
                                     )
@@ -465,7 +456,6 @@ suspend fun Room.handleGameData(move: Move): GameState {
                                     // Move on to next player, add to logs
                                     newGameState = gs.copy(
                                         currentPlayer = nextPlayer, // next player in turn
-                                        currentMove = null, // consume move
                                         currentState = State.Turn(gs.players[nextPlayer]),
                                         logs = gs.logs.toMutableList().apply { add(passedMove.description) }
                                     )
@@ -473,8 +463,7 @@ suspend fun Room.handleGameData(move: Move): GameState {
                                 is Move.Assassinate -> {
                                     newGameState = gs.copy(
                                         currentState = State.WaitSurrender(passedMove.victim, move),
-                                        currentMove = move,
-                                        logs = gs.logs.toMutableList().apply { add(move.description) }
+                                        logs = gs.logs.toMutableList().apply { add(move.description + " PASSED") }
                                     )
                                 }
                                 is Move.Exchange -> {
@@ -483,7 +472,8 @@ suspend fun Room.handleGameData(move: Move): GameState {
                                             player = passedMove.player,
                                             choices = listOf(deck[0], deck[1]), // first in the new deck
                                             move = passedMove
-                                        )
+                                        ),
+                                        logs = gs.logs.toMutableList().apply { add(move.description + " PASSED") }
                                     )
                                 }
                                 else -> {
@@ -525,7 +515,6 @@ suspend fun Room.handleGameData(move: Move): GameState {
                         newGameState = gs.copy(
                             players = newPlayersList,
                             currentPlayer = nextPlayer, // next player in turn
-                            currentMove = null, // consume move
                             currentState = State.Turn(gs.players[nextPlayer]),
                             logs = gs.logs.toMutableList().apply { add(move.description) }
                         )
@@ -580,7 +569,6 @@ suspend fun Room.handleGameData(move: Move): GameState {
                                     deck = newDeck,
                                     players = newPlayers,
                                     currentPlayer = nextPlayer, // next player in turn
-                                    currentMove = null, // consume move
                                     currentState = State.Turn(gs.players[nextPlayer]),
                                     logs = gs.logs.toMutableList().apply { add(move.description) }
                                 )
@@ -643,7 +631,6 @@ fun newGameState(connections: Set<Connection>): GameState {
         players = players,
         currentPlayer = 0,
         currentState = State.Turn(players[0]),
-        currentMove = null,
         logs = mutableListOf()
     )
 }
