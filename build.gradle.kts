@@ -26,5 +26,5 @@ buildscript {
 }
 
 tasks {
-    create("stage").dependsOn("installDist")
+    create("stage").dependsOn(":backend:installDist")
 }
