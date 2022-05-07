@@ -3,6 +3,7 @@ import io.ktor.client.*
 import io.ktor.client.features.websocket.*
 import io.ktor.http.*
 import io.ktor.http.cio.websocket.*
+import kotlinx.browser.window
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.channels.SendChannel
@@ -11,7 +12,7 @@ import kotlinx.serialization.json.Json
 
 suspend fun HttpClient.setupSession(readChannel: SendChannel<String>, sendChannel: ReceiveChannel<String>) {
     println("Starting websocket connection")
-    this.webSocket(method = HttpMethod.Get, port = 80, path = "/coup") {
+    this.webSocket(method = HttpMethod.Get, host = window.location.host, port = 80, path = "/coup") {
         val messageOutputRoutine = launch { sendTo(readChannel) }
         val userInputRoutine = launch { receiveFrom(sendChannel) }
 
