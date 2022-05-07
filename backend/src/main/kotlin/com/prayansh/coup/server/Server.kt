@@ -14,26 +14,31 @@ import io.ktor.server.routing.*
 import io.lettuce.core.RedisClient
 
 fun main() {
-    val redisClient = RedisClient.create("redis://password@localhost:6379/0")
+    val redisUrl = System.getenv("REDIS_URL").let {
+        if (it.isNullOrBlank()) {
+            "redis://password@localhost:6379/0"
+        } else it
+    }
+    val redisClient = RedisClient.create(redisUrl)
     val redis1 = redisClient.connectPubSub()
     val redis2 = redisClient.connectPubSub()
-	embeddedServer(Netty, port = 8080, host = "0.0.0.0") {
-		install(Routing)
-		install(ContentNegotiation) {
-			json()
-		}
-		install(StatusPages) {
-			exception<AuthenticationException> { call, _ ->
-				call.respond(HttpStatusCode.Unauthorized)
-			}
-			exception<AuthorizationException> { call, _ ->
-				call.respond(HttpStatusCode.Forbidden)
-			}
+    embeddedServer(Netty, port = 8080, host = "0.0.0.0") {
+        install(Routing)
+        install(ContentNegotiation) {
+            json()
+        }
+        install(StatusPages) {
+            exception<AuthenticationException> { call, _ ->
+                call.respond(HttpStatusCode.Unauthorized)
+            }
+            exception<AuthorizationException> { call, _ ->
+                call.respond(HttpStatusCode.Forbidden)
+            }
 
-		}
-		configureRouting()
+        }
+        configureRouting()
         configureSockets(redis1, redis2)
-	}.start(wait = true)
+    }.start(wait = true)
 }
 
 class AuthenticationException : RuntimeException()
