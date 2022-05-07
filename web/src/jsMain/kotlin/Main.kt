@@ -61,17 +61,12 @@ val client = HttpClient(Js) {
     install(WebSockets)
 }
 
-val p1 = Player("Pray", Pair(Influence(Role.BODYGUARD, true), Influence(Role.BODYGUARD, true)), 2, "#12CBC4")
-val p2 = Player("Ming", Pair(Influence(Role.POLITICIAN, true), Influence(Role.SNIPER, true)), 4, "#9980FA")
-val p3 = Player("Prateek", Pair(Influence(Role.DIPLOMAT, true), Influence(Role.GENERAL, true)), 3, "#FFC312")
-
 enum class ScreenState {
     LOBBY, JOIN, CREATE, GAME
 }
 
 val scope = MainScope()
 fun main() {
-
     val readChannel = Channel<String>()
     val sendChannel = Channel<String>()
     scope.launch {

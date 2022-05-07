@@ -11,7 +11,7 @@ import kotlinx.serialization.json.Json
 
 suspend fun HttpClient.setupSession(readChannel: SendChannel<String>, sendChannel: ReceiveChannel<String>) {
     println("Starting websocket connection")
-    this.webSocket(method = HttpMethod.Get, host = "127.0.0.1", port = 8080, path = "/coup") {
+    this.webSocket(method = HttpMethod.Get, port = 80, path = "/coup") {
         val messageOutputRoutine = launch { sendTo(readChannel) }
         val userInputRoutine = launch { receiveFrom(sendChannel) }
 
