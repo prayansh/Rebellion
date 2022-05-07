@@ -13,12 +13,17 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.lettuce.core.RedisClient
 
-fun main() {
-    val redisUrl = System.getenv("REDIS_URL").let {
-        if (it.isNullOrBlank()) {
-            "redis://password@localhost:6379/0"
-        } else it
+fun envVar(key: String, defaultVal: String = ""): String {
+    return System.getenv(key).let {
+        if (it.isNullOrBlank()) defaultVal
+        else it
     }
+}
+
+fun main() {
+    val redisUrl = envVar("REDIS_URL", "redis://password@localhost:6379/0")
+    val port = envVar("PORT", "8080").toInt()
+
     val redisClient = RedisClient.create(redisUrl)
     val redis1 = redisClient.connectPubSub()
     val redis2 = redisClient.connectPubSub()
