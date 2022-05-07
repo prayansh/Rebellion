@@ -27,7 +27,7 @@ fun main() {
     val redisClient = RedisClient.create(redisUrl)
     val redis1 = redisClient.connectPubSub()
     val redis2 = redisClient.connectPubSub()
-    embeddedServer(Netty, port = 8080, host = "0.0.0.0") {
+    embeddedServer(Netty, port = 8080) {
         install(Routing)
         install(ContentNegotiation) {
             json()
