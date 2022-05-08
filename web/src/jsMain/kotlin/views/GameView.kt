@@ -40,7 +40,7 @@ fun GameView(session: Session) {
             CheatSheet(setShowCheatSheet)
         }
         Div(attrs = { classes(AppStylesheet.peerList) }) {
-            Span(attrs = { style { fontSize(38.px); } }) {
+            Span(attrs = { style { fontSize(38.px) } }) {
                 Text("Players")
             }
             UserList(gameState.players, gameState.currentPlayer, me)
@@ -296,81 +296,74 @@ fun ActionsCard(session: Session, gameState: GameState) {
         val (showPlayerList, setShowPlayerList) = remember { mutableStateOf(false) }
         val (chosenAction, setChosenAction) = remember { mutableStateOf<UserAction?>(null) }
         val me = gameState.players.find { it.name == session.userName }!!
-        Div {
+        RowDiv {
             // TODO cleanup this code a bit
             val availableActions = availableActions(me.coins)
-            availableActions.forEach {
-                Button(attrs = {
-                    onClick { event ->
-                        when (it) {
-                            UserAction.INCOME -> {
-                                scope.launch {
-                                    session.sendMove(Move.Income(me))
-                                }
+            availableActions.forEach { userAction ->
+                ClickableButton(userAction.toString()) {
+                    when (userAction) {
+                        UserAction.INCOME -> {
+                            scope.launch {
+                                session.sendMove(Move.Income(me))
                             }
-                            UserAction.FOREIGN_AID -> {
-                                scope.launch {
-                                    session.sendMove(Move.ForeignAid(me))
-                                }
+                        }
+                        UserAction.FOREIGN_AID -> {
+                            scope.launch {
+                                session.sendMove(Move.ForeignAid(me))
                             }
-                            UserAction.TAX -> {
-                                scope.launch {
-                                    session.sendMove(Move.Tax(me))
-                                }
+                        }
+                        UserAction.TAX -> {
+                            scope.launch {
+                                session.sendMove(Move.Tax(me))
                             }
-                            UserAction.STEAL, UserAction.ASSASSINATE, UserAction.COUP -> {
-                                // choose user first
-                                setShowPlayerList(true)
-                                setChosenAction(it)
-                            }
-                            UserAction.EXCHANGE -> {
-                                scope.launch {
-                                    // cant exactly send move exchange, might need an intermediate
-                                    session.sendMove(Move.Exchange(me, emptyList()))
-                                }
+                        }
+                        UserAction.STEAL, UserAction.ASSASSINATE, UserAction.COUP -> {
+                            // choose user first
+                            setShowPlayerList(true)
+                            setChosenAction(userAction)
+                        }
+                        UserAction.EXCHANGE -> {
+                            scope.launch {
+                                // cant exactly send move exchange, might need an intermediate
+                                session.sendMove(Move.Exchange(me, emptyList()))
                             }
                         }
                     }
-                    style {
-                        margin(5.px)
-                        padding(5.px)
-                    }
-                }) {
-                    Text(it.toString())
                 }
             }
         }
         if (showPlayerList) {
-            gameState.players.filterNot { it.name == session.userName }.forEach {
-                Button(attrs = {
-                    onClick { event ->
-                        when (chosenAction) {
-                            UserAction.ASSASSINATE -> {
-                                scope.launch {
-                                    session.sendMove(Move.Assassinate(me, it))
+            ColumnDiv {
+                Span(attrs = { style { fontSize(18.px) } }) {
+                    Text("Choose a player...")
+                }
+                RowDiv {
+                    gameState.players.filterNot { it.name == session.userName }.forEach { victim ->
+                        ClickableButton(victim.name) {
+                            when (chosenAction) {
+                                UserAction.ASSASSINATE -> {
+                                    scope.launch {
+                                        session.sendMove(Move.Assassinate(me, victim))
+                                    }
+                                }
+                                UserAction.COUP -> {
+                                    scope.launch {
+                                        session.sendMove(Move.Coup(me, victim))
+                                    }
+                                }
+                                UserAction.STEAL -> {
+                                    scope.launch {
+                                        session.sendMove(Move.Steal(me, victim))
+                                    }
+                                }
+                                else -> {
+                                    // NO-OP
                                 }
                             }
-                            UserAction.COUP -> {
-                                scope.launch {
-                                    session.sendMove(Move.Coup(me, it))
-                                }
-                            }
-                            UserAction.STEAL -> {
-                                scope.launch {
-                                    session.sendMove(Move.Steal(me, it))
-                                }
-                            }
-                            else -> TODO()
+                            setShowPlayerList(false)
+                            setChosenAction(null)
                         }
-                        setShowPlayerList(false)
-                        setChosenAction(null)
                     }
-                    style {
-                        margin(5.px)
-                        padding(5.px)
-                    }
-                }) {
-                    Text(it.name)
                 }
             }
         }
@@ -379,25 +372,27 @@ fun ActionsCard(session: Session, gameState: GameState) {
 
 @Composable
 fun CounterActionsCard(session: Session, me: Player, move: Move) {
-    Div {
+    ColumnDiv {
         Text("${move.player.name} is attempting to do ${move::class.simpleName}...")
-        if (move.isChallengeable()) {
-            ClickableButton("Challenge") {
-                scope.launch {
-                    session.sendMove(Move.Challenge(me, move))
+        RowDiv {
+            if (move.isChallengeable()) {
+                ClickableButton("Challenge") {
+                    scope.launch {
+                        session.sendMove(Move.Challenge(me, move))
+                    }
                 }
             }
-        }
-        if (move.isBlockable()) {
-            ClickableButton("Block") {
-                scope.launch {
-                    session.sendMove(Move.Block(me, move))
+            if (move.isBlockable()) {
+                ClickableButton("Block") {
+                    scope.launch {
+                        session.sendMove(Move.Block(me, move))
+                    }
                 }
             }
-        }
-        ClickableButton("Pass") {
-            scope.launch {
-                session.sendMove(Move.Pass(me, move))
+            ClickableButton("Pass") {
+                scope.launch {
+                    session.sendMove(Move.Pass(me, move))
+                }
             }
         }
     }

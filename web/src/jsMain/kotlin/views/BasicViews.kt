@@ -5,11 +5,9 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.web.events.SyntheticMouseEvent
 import org.jetbrains.compose.web.attributes.AttrsBuilder
 import org.jetbrains.compose.web.attributes.InputType
-import org.jetbrains.compose.web.css.fontSize
-import org.jetbrains.compose.web.css.margin
-import org.jetbrains.compose.web.css.padding
-import org.jetbrains.compose.web.css.px
+import org.jetbrains.compose.web.css.*
 import org.jetbrains.compose.web.dom.*
+import org.w3c.dom.HTMLDivElement
 import org.w3c.dom.HTMLSpanElement
 
 @Composable
@@ -37,23 +35,50 @@ fun InputText(label: String, text: MutableState<String>) {
 }
 
 @Composable
-fun RowDiv() {
-
+fun RowDiv(attrs: AttrBuilderContext<HTMLDivElement>? = null, content: ContentBuilder<HTMLDivElement>) {
+    Div(attrs = {
+        attrs?.let { apply(it) }
+        style {
+            display(DisplayStyle.Flex); flexDirection(FlexDirection.Row)
+        }
+    }) {
+        content()
+    }
 }
 
 @Composable
-fun ColumnDiv() {
-
+fun ColumnDiv(attrs: AttrBuilderContext<HTMLDivElement>? = null, content: ContentBuilder<HTMLDivElement>) {
+    Div(attrs = {
+        attrs?.let { apply(it) }
+        style {
+            display(DisplayStyle.Flex); flexDirection(FlexDirection.Column)
+        }
+    }) {
+        content()
+    }
 }
 
 @Composable
 fun ClickableButton(text: String, onClick: (SyntheticMouseEvent) -> Unit) {
+    ClickableButton(text, null, onClick)
+}
+
+@Composable
+fun ClickableButton(text: String, styles: (StyleBuilder.() -> Unit)?, onClick: (SyntheticMouseEvent) -> Unit) {
     Button(
         attrs = {
             onClick(onClick)
             style {
+                styles?.let { apply(styles) }
                 margin(5.px)
                 padding(5.px)
+                border {
+                    style = LineStyle.Solid
+                    color = Color.white
+                    width = 2.px
+                }
+                backgroundColor(Color.transparent)
+                color(Color.white)
             }
         }
     ) {

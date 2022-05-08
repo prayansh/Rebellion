@@ -51,9 +51,9 @@ fun availableActions(coins: Int): List<UserAction> {
         if (coins >= 10) {
             add(UserAction.COUP)
         } else {
-            add(UserAction.TAX)
             add(UserAction.INCOME)
             add(UserAction.FOREIGN_AID)
+            add(UserAction.TAX)
             add(UserAction.STEAL)
             add(UserAction.EXCHANGE)
             if (coins >= 7) {

@@ -11,9 +11,7 @@ import org.jetbrains.compose.web.dom.Text
 fun RoleView(it: Influence) {
     Div(attrs = {
         style {
-            width(50.percent); paddingBottom(50.percent);
-            marginRight(2.px); backgroundColor(Color.black)
-            border(2.px)
+            width(50.percent)
             backgroundColor(it.role.color.css)
             display(DisplayStyle.Flex)
             flexDirection(FlexDirection.Row)

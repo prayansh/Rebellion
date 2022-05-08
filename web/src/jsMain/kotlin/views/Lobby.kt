@@ -19,23 +19,11 @@ import scope
 @Composable
 fun LobbyScreen(setScreenState: (ScreenState) -> Unit, setErrorMsg: (String) -> Unit) {
     Div {
-        Button(
-            attrs = {
-                onClick { event ->
-                    setScreenState(ScreenState.CREATE)
-                }
-            }
-        ) {
-            Text("Create")
+        ClickableButton("Create") {
+            setScreenState(ScreenState.CREATE)
         }
-        Button(
-            attrs = {
-                onClick { event ->
-                    setScreenState(ScreenState.JOIN)
-                }
-            }
-        ) {
-            Text("Join")
+        ClickableButton("Join") {
+            setScreenState(ScreenState.JOIN)
         }
     }
 }
