@@ -12,6 +12,8 @@ import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.lettuce.core.RedisClient
+import io.lettuce.core.protocol.CommandHandler
+import org.slf4j.event.Level
 
 fun envVar(key: String, defaultVal: String = ""): String {
     return System.getenv(key).let {
@@ -23,7 +25,6 @@ fun envVar(key: String, defaultVal: String = ""): String {
 fun main() {
     val redisUrl = envVar("REDIS_URL", "redis://password@localhost:6379/0")
     val port = envVar("PORT", "80").toInt()
-
     val redisClient = RedisClient.create(redisUrl)
     val redis1 = redisClient.connectPubSub()
     val redis2 = redisClient.connectPubSub()

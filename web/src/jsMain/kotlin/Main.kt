@@ -14,6 +14,7 @@ object AppStylesheet : StyleSheet() {
 
     init {
         "*" style {
+            property("color-scheme", "light dark")
         }
         "body" style {
             backgroundColor(Color("#222222"))
@@ -68,12 +69,11 @@ fun main() {
     }
     val session = Session(readChannel, sendChannel)
     session.registerObserver {
-        println(it)
+        Logger.debug(it.toString())
     }
     scope.launch {
         session.initiateSession()
     }
-    var roomCode = mutableStateOf("")
     renderComposable(rootElementId = "root") {
         val (screenState, setScreenState) = remember { mutableStateOf(ScreenState.LOBBY) }
         val (errorMsg, setErrorMsg) = remember { mutableStateOf("") }

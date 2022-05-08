@@ -71,7 +71,7 @@ fun CreateRoom(session: Session, setScreenState: (ScreenState) -> Unit, setError
                 scope.launch {
                     session.start()
                     val msg = session.receive()
-                    println("Received ${msg.content}")
+                    Logger.debug("Received ${msg.content}")
                     if (msg.type == Message.Type.START) {
                         session.gameState = Json.decodeFromJsonElement(GameState.serializer(), msg.content)
                         setScreenState(ScreenState.GAME)
@@ -131,7 +131,7 @@ fun JoinRoom(session: Session, setScreenState: (ScreenState) -> Unit, setErrorMs
             Text("Waiting for start")
             scope.launch {
                 val msg = session.receive()
-                println("Received ${msg.content}")
+                Logger.debug("Received ${msg.content}")
                 if (msg.type == Message.Type.START) {
                     session.gameState = Json.decodeFromJsonElement(GameState.serializer(), msg.content)
                     setScreenState(ScreenState.GAME)

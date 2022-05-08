@@ -12,7 +12,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 
 suspend fun HttpClient.setupSession(readChannel: SendChannel<String>, sendChannel: ReceiveChannel<String>) {
-    println("Starting websocket connection")
+    Logger.info("Starting websocket connection")
     val protocol = if (window.location.origin.contains("https://")) URLProtocol.WSS else URLProtocol.WS
     val host = window.location.host
     this.webSocket(
@@ -27,7 +27,7 @@ suspend fun HttpClient.setupSession(readChannel: SendChannel<String>, sendChanne
         userInputRoutine.join() // Wait for completion; either "exit" or error
         messageOutputRoutine.cancelAndJoin()
     }
-    println("Closing websocket connection")
+    Logger.info("Closing websocket connection")
 }
 
 suspend fun DefaultClientWebSocketSession.sendTo(output: SendChannel<String>) {
@@ -37,7 +37,7 @@ suspend fun DefaultClientWebSocketSession.sendTo(output: SendChannel<String>) {
             output.send(message.readText())
         }
     } catch (e: Exception) {
-        println("Error while receiving: " + e.message)
+        Logger.error("Error while receiving: " + e.message)
     }
 }
 
@@ -48,7 +48,7 @@ suspend fun DefaultClientWebSocketSession.receiveFrom(input: ReceiveChannel<Stri
         try {
             send(message)
         } catch (e: Exception) {
-            println("Error while sending: " + e.message)
+            Logger.error("Error while sending: " + e.message)
             return
         }
     }
