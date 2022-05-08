@@ -509,25 +509,35 @@ suspend fun Room.handleGameData(move: Move): GameState {
                             !allNotAlive
                         }
 
-                        println("============ Current player: ${gs.currentPlayer}")
-                        val nextPlayer = if (playerRemoved == -1) {
-                            (gs.currentPlayer + 1) % gs.players.size
+                        if (newPlayersList.size == 1) {
+                            val winner = gs.players[0]
+                            newGameState = gs.copy(
+                                players = newPlayersList,
+                                currentState = State.GameOver(winner),
+                                logs = gs.logs.toMutableList().apply {
+                                    add(move.description)
+                                    add("${winner.name} has won the game")
+                                }
+                            )
                         } else {
-                            if (gs.currentPlayer == gs.players.size - 1) {
-                                0
-                            } else if(playerRemoved > gs.currentPlayer) {
-                                (gs.currentPlayer + 1) % newPlayersList.size
+                            val nextPlayer = if (playerRemoved == -1) {
+                                (gs.currentPlayer + 1) % gs.players.size
                             } else {
-                                gs.currentPlayer
+                                if (gs.currentPlayer == gs.players.size - 1) {
+                                    0
+                                } else if (playerRemoved > gs.currentPlayer) {
+                                    (gs.currentPlayer + 1) % newPlayersList.size
+                                } else {
+                                    gs.currentPlayer
+                                }
                             }
+                            newGameState = gs.copy(
+                                players = newPlayersList,
+                                currentPlayer = nextPlayer, // next player in turn
+                                currentState = State.Turn(gs.players[nextPlayer]),
+                                logs = gs.logs.toMutableList().apply { add(move.description) }
+                            )
                         }
-                        println("============ New player: ${nextPlayer}")
-                        newGameState = gs.copy(
-                            players = newPlayersList,
-                            currentPlayer = nextPlayer, // next player in turn
-                            currentState = State.Turn(gs.players[nextPlayer]),
-                            logs = gs.logs.toMutableList().apply { add(move.description) }
-                        )
                     }
                     else -> {
                         println("Bad move received: ($move, $gs)")
@@ -612,6 +622,9 @@ suspend fun Room.handleGameData(move: Move): GameState {
                         println("Bad move received: ($move, $gs)")
                     }
                 }
+            }
+            is State.GameOver -> {
+                // NO-OP
             }
         }
     }

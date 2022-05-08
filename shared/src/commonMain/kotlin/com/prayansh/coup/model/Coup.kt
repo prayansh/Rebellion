@@ -210,4 +210,7 @@ sealed class State {
     data class ExchangeInfluence(val player: Player, val choices: List<Role>, val move: Move) : State() {
 
     }
+
+    @Serializable
+    data class GameOver(val winner: Player): State()
 }

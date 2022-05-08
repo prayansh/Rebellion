@@ -203,6 +203,11 @@ fun GameState(session: Session, gameState: GameState, myself: Player) {
                 Text("Waiting on ${state.player.name}'s to surrender an influence...")
             }
         }
+        is State.GameOver -> {
+            Div {
+                Text("${state.winner.name} has won the game!!")
+            }
+        }
     }
 }
 
