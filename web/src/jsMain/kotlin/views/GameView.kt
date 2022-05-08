@@ -10,9 +10,7 @@ import com.prayansh.coup.model.State
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-import org.jetbrains.compose.web.ExperimentalComposeWebApi
 import org.jetbrains.compose.web.css.*
-import org.jetbrains.compose.web.dom.Button
 import org.jetbrains.compose.web.dom.Div
 import org.jetbrains.compose.web.dom.Span
 import org.jetbrains.compose.web.dom.Text
@@ -130,7 +128,7 @@ fun GameState(session: Session, gameState: GameState, myself: Player) {
                     }
                     is Move.Exchange -> {
                         val myRoles = myself.roles.toList()
-                        val count = myRoles.count { it.alive }
+                        val aliveCount = myRoles.count { it.alive }
                         val roles = buildList {
                             addAll(state.choices)
                             myRoles.forEach {
@@ -142,7 +140,7 @@ fun GameState(session: Session, gameState: GameState, myself: Player) {
                         val choices = roles.map { it to mutableStateOf(false) }
                         val error = mutableStateOf("")
                         Div {
-                            Text("Choose upto $count influences to keep ${error.value}")
+                            Text("Choose upto $aliveCount influences to keep ${error.value}")
                             Div(attrs = {
                                 style {
                                     display(DisplayStyle.Flex); flexDirection(FlexDirection.Column)
@@ -150,7 +148,7 @@ fun GameState(session: Session, gameState: GameState, myself: Player) {
                             }) {
                                 val disable = remember { mutableStateOf(false) }
                                 val chosenCount = choices.count { it.second.value }
-                                disable.value = chosenCount >= count
+                                disable.value = chosenCount >= aliveCount
                                 choices.forEach { choice ->
                                     MyCheckbox(choice.first.name, choice.second, !choice.second.value && disable.value)
                                 }
@@ -162,10 +160,10 @@ fun GameState(session: Session, gameState: GameState, myself: Player) {
                                             .zip(choices.filter { !it.second.value }) { a, b ->
                                                 b.first to a.first
                                             }
-                                    if (changes.size == count) {
+                                    if (changes.size == aliveCount) {
                                         session.sendMove(Move.Exchange(myself, changes))
                                     } else {
-                                        error.value = "(Select only $count influence(s))"
+                                        error.value = "(Select only $aliveCount influence(s))"
                                     }
                                 }
                             }
@@ -296,7 +294,7 @@ fun ActionsCard(session: Session, gameState: GameState) {
         val (showPlayerList, setShowPlayerList) = remember { mutableStateOf(false) }
         val (chosenAction, setChosenAction) = remember { mutableStateOf<UserAction?>(null) }
         val me = gameState.players.find { it.name == session.userName }!!
-        RowDiv {
+        Div {
             // TODO cleanup this code a bit
             val availableActions = availableActions(me.coins)
             availableActions.forEach { userAction ->
@@ -337,7 +335,7 @@ fun ActionsCard(session: Session, gameState: GameState) {
                 Span(attrs = { style { fontSize(18.px) } }) {
                     Text("Choose a player...")
                 }
-                RowDiv {
+                Div {
                     gameState.players.filterNot { it.name == session.userName }.forEach { victim ->
                         ClickableButton(victim.name) {
                             when (chosenAction) {
