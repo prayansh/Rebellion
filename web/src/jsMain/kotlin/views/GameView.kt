@@ -77,7 +77,7 @@ fun GameView(session: Session) {
 fun GameState(session: Session, gameState: GameState, myself: Player) {
     when (val state = gameState.currentState) {
         is State.Turn -> {
-            if (state.player == myself) { // My Turn show my actions
+            if (state.player sameAs myself) { // My Turn show my actions
                 ActionsCard(session, gameState)
             } else {
                 Text("Waiting on ${state.player.name}'s turn...")
@@ -91,7 +91,7 @@ fun GameState(session: Session, gameState: GameState, myself: Player) {
             }
         }
         is State.ShowInfluence -> {
-            if (state.player == myself) {
+            if (state.player sameAs myself) {
                 Div {
                     val (r1, r2) = myself.roles
                     Text("Choose role to prove your action")
@@ -115,7 +115,7 @@ fun GameState(session: Session, gameState: GameState, myself: Player) {
             }
         }
         is State.ExchangeInfluence -> {
-            if (state.player == myself) {
+            if (state.player sameAs myself) {
                 when (val m = state.move) {
                     is Move.Show -> {
                         val choice = state.choices[0]
@@ -180,7 +180,7 @@ fun GameState(session: Session, gameState: GameState, myself: Player) {
             }
         }
         is State.WaitSurrender -> {
-            if (state.player == myself) {
+            if (state.player sameAs myself) {
                 Div {
                     val (r1, r2) = myself.roles
                     Text("Choose role to surrender")

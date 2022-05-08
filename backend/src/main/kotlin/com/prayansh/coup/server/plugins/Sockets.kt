@@ -341,7 +341,7 @@ suspend fun Room.handleGameData(move: Move): GameState {
                                     p
                                 }
                             }, // Consume 3 coins
-                            currentState = State.WaitCounter(gs.players, move),
+                            currentState = State.WaitCounter(gs.players.filterNot { it sameAs move.player }, move),
                             logs = gs.logs.toMutableList()
                                 .apply { add("Attempt: " + move.description) } // maybe add an attempt option
                         )
@@ -487,6 +487,7 @@ suspend fun Room.handleGameData(move: Move): GameState {
                 when (move) {
                     is Move.Surrender -> {
                         val delRole = move.role
+                        var playerRemoved = -1
                         val newPlayersList = gs.players.map { p ->
                             if (p sameAs move.player) {
                                 val roles = p.roles.let {
@@ -502,19 +503,25 @@ suspend fun Room.handleGameData(move: Move): GameState {
                             } else {
                                 p
                             }
-                        }.filterNot { p -> // filter out players who have both roles dead
-                            p.roles.toList().all { !it.alive }
+                        }.filterIndexed { idx, p -> // filter out players who have both roles dead
+                            val allNotAlive = p.roles.toList().all { !it.alive }
+                            if (allNotAlive) playerRemoved = idx
+                            !allNotAlive
                         }
-                        val nextPlayer = if (newPlayersList.size < gs.players.size) {
-                            // move to start of list if last player got booted, else stay at current
+
+                        println("============ Current player: ${gs.currentPlayer}")
+                        val nextPlayer = if (playerRemoved == -1) {
+                            (gs.currentPlayer + 1) % gs.players.size
+                        } else {
                             if (gs.currentPlayer == gs.players.size - 1) {
                                 0
+                            } else if(playerRemoved > gs.currentPlayer) {
+                                (gs.currentPlayer + 1) % newPlayersList.size
                             } else {
                                 gs.currentPlayer
                             }
-                        } else {
-                            (gs.currentPlayer + 1) % gs.players.size
                         }
+                        println("============ New player: ${nextPlayer}")
                         newGameState = gs.copy(
                             players = newPlayersList,
                             currentPlayer = nextPlayer, // next player in turn
