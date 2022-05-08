@@ -22,6 +22,7 @@ import scope
 fun GameView(session: Session) {
     val scope = rememberCoroutineScope { Dispatchers.Default }
     val (gameState, setGameState) = remember { mutableStateOf(session.gameState) }
+    val (showCheatSheet, setShowCheatSheet) = remember { mutableStateOf(false) }
     scope.launch {
         while (true) {
             val msg = session.receive()
@@ -35,16 +36,20 @@ fun GameView(session: Session) {
     }
     val me by mutableStateOf(gameState.players.find { it.name == session.userName }, referentialEqualityPolicy())
     Div(attrs = { style { display(DisplayStyle.Flex) } }) {
+        if (showCheatSheet) {
+            CheatSheet(setShowCheatSheet)
+        }
         Div(attrs = { classes(AppStylesheet.peerList) }) {
             Span(attrs = { style { fontSize(38.px); } }) {
                 Text("Players")
             }
-            gameState.players.forEachIndexed { idx, player ->
-                UserList(gameState.currentPlayer == idx, player)
-            }
+            UserList(gameState.players, gameState.currentPlayer, me)
         }
 
         Div(attrs = { classes(AppStylesheet.middleCol) }) {
+            ClickableButton("Show cheatsheet") {
+                setShowCheatSheet(!showCheatSheet)
+            }
             Span(attrs = { style { fontSize(24.px); justifyContent(JustifyContent.Center) } }) {
                 Text("Cards in deck: ${gameState.deck.size}")
             }
@@ -201,7 +206,6 @@ fun GameState(session: Session, gameState: GameState, myself: Player) {
     }
 }
 
-@OptIn(ExperimentalComposeWebApi::class)
 @Composable
 fun UserCard(me: Player) {
     Div(attrs = {
@@ -217,29 +221,7 @@ fun UserCard(me: Player) {
         }
         Div(attrs = { style { display(DisplayStyle.Flex); width(90.percent) } }) {
             me.roles.toList().forEach {
-                Div(attrs = {
-                    style {
-                        width(50.percent); paddingBottom(50.percent);
-                        marginRight(2.px); backgroundColor(Color.black)
-                        border(2.px)
-                    }
-                }) {
-                    Span({
-                        style {
-                            padding(15.px);
-                            fontSize(24.px);
-                            property("writing-mode", "vertical-lr")
-//                            transform {
-//                                rotate(180.deg);
-//                            }
-                        }
-                    }) {
-                        Text(it.role.name)
-                        if (!it.alive) {
-                            Text(" (DEAD)")
-                        }
-                    }
-                }
+                RoleView(it)
             }
         }
         Div {
@@ -252,45 +234,52 @@ fun UserCard(me: Player) {
 
 @Composable
 fun UserList(
-    isActivePlayer: Boolean,
-    player: Player
+    players: List<Player>,
+    currentPlayer: Int,
+    thisPlayer: Player?,
 ) {
-    val activeInfluences = listOf(player.roles.first, player.roles.second).count { it.alive }
-    Div(attrs = { style { backgroundColor(player.color.css); display(DisplayStyle.Flex); flexDirection(FlexDirection.Row) } }) {
-        Div(attrs = { style { padding(10.px); width(80.percent) } }) {
-            Div {
-                Span(attrs = { style { fontSize(24.px) } }) {
-                    Text(player.name)
+    players.forEachIndexed { idx, player ->
+        val isActivePlayer = currentPlayer == idx
+        val activeInfluences = listOf(player.roles.first, player.roles.second).count { it.alive }
+        Div(attrs = { style { backgroundColor(player.color.css); display(DisplayStyle.Flex); flexDirection(FlexDirection.Row) } }) {
+            Div(attrs = { style { padding(10.px); width(80.percent) } }) {
+                Div {
+                    Span(attrs = { style { fontSize(24.px) } }) {
+                        Text(player.name)
+                    }
                 }
-            }
-            Div {
-                Span(attrs = { style { fontSize(18.px) } }) {
-                    Text("Influences: $activeInfluences")
-                }
-            }
-            Div {
-                Span(attrs = { style { fontSize(18.px) } }) {
-                    Text("Coins: ${player.coins}")
-                }
-            }
-            val dead = player.roles.toList().fold("") { acc, it ->
-                if (!it.alive) {
-                    acc + it.role + ","
-                } else {
-                    acc
-                }
-            }
-            if (dead.isNotEmpty()) {
                 Div {
                     Span(attrs = { style { fontSize(18.px) } }) {
-                        Text("Dead: $dead")
+                        Text("Influences: $activeInfluences")
+                    }
+                }
+                Div {
+                    Span(attrs = { style { fontSize(18.px) } }) {
+                        Text("Coins: ${player.coins}")
+                    }
+                }
+                val dead = player.roles.toList().fold("") { acc, it ->
+                    if (!it.alive) {
+                        acc + it.role + ","
+                    } else {
+                        acc
+                    }
+                }
+                if (dead.isNotEmpty()) {
+                    Div {
+                        Span(attrs = { style { fontSize(18.px) } }) {
+                            Text("Dead: $dead")
+                        }
                     }
                 }
             }
-        }
-        Div(attrs = { style { padding(10.px); width(20.percent) } }) {
-            if (isActivePlayer) {
-                Text("Active")
+            Div(attrs = { style { padding(10.px); width(20.percent) } }) {
+                if (player sameAs thisPlayer) {
+                    Text("(You)")
+                }
+                if (isActivePlayer) {
+                    Text("(Active)")
+                }
             }
         }
     }

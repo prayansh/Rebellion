@@ -110,12 +110,12 @@ sealed class Move {
 
     // who can perform this move
     fun proofList(): List<Role> {
-        return when(this) {
+        return when (this) {
             is Assassinate -> listOf(Role.SNIPER)
             is Exchange -> listOf(Role.DIPLOMAT)
             is Steal -> listOf(Role.GENERAL)
             is Tax -> listOf(Role.POLITICIAN)
-            is Block -> when(val a = this.action) {
+            is Block -> when (val a = this.action) {
                 is Assassinate -> listOf(Role.BODYGUARD)
                 is ForeignAid -> listOf(Role.POLITICIAN)
                 is Steal -> listOf(Role.DIPLOMAT, Role.GENERAL)
@@ -128,8 +128,12 @@ sealed class Move {
 }
 
 @Serializable
-enum class Role {
-    POLITICIAN, SNIPER, DIPLOMAT, GENERAL, BODYGUARD
+enum class Role(val color: String) {
+    POLITICIAN(RoleColors[3]),
+    SNIPER(RoleColors[1]),
+    DIPLOMAT(RoleColors[2]),
+    GENERAL(RoleColors[4]),
+    BODYGUARD(RoleColors[0])
 }
 
 @Serializable
@@ -169,14 +173,6 @@ data class GameState(
 
 @Serializable
 sealed class State {
-    /*
-    Turn -> WaitCounter
-    except Turn(): Income -> Turn(nextPlayer)
-    except Turn(): Coup   -> WaitSurrender(coupee)
-
-     */
-
-
     // Its X's turn
     @Serializable
     data class Turn(val player: Player) : State() {
@@ -215,42 +211,3 @@ sealed class State {
 
     }
 }
-
-/*
-currentAction = turn(p1)
-p1's screen
--> available moves = f(coins)
-everyone else
--> waiting
-
----> p1 chooses a1
-
-currentAction = a1(p1)
-p1's screen
--> waiting
-everyone else
--> block(a1)?, challenge, pass
-
----> if block(a1) by pX
-currentAction = block(a1(pX))
-pX's screen
--> waiting
-p1's screen
--> challenge, pass
-everyone else
--> waiting
-
----> if challenge by pX
-currentAction = challenge(a1(pX))
-pX's screen
--> waiting
-p1's screen
--> choose influence to show / discard influence
-everyone else
--> waiting
-
----> pass by all
-gameStateUpdated(pass) + effect(a1)
-currentAction = turn(p2)
-
- */

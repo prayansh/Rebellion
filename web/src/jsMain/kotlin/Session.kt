@@ -54,7 +54,7 @@ class Session(
         return result
     }
 
-    suspend fun createRoom(username: String): String {
+    suspend fun createRoom(username: String): String? {
         val createMsg = Message(
             type = Message.Type.CREATE,
             content = buildJsonObject {
@@ -63,22 +63,33 @@ class Session(
             timestamp = 0.toULong()
         )
         send(createMsg)
+
+        var errorMsg: String? = null
+        var colorStr = "#000000"
+
         val msg = receive()
-        val colorStr = if (msg.type == Message.Type.JOIN) {
-            msg.content["color"]?.jsonPrimitive?.content ?: "#000000"
-        } else {
-            throw IllegalStateException("Expected join message from server, got $msg")
+        when(msg.type) {
+            Message.Type.JOIN -> {
+                colorStr = msg.content["color"]?.jsonPrimitive?.content ?: "#000000"
+            }
+            Message.Type.ERROR -> {
+                errorMsg = msg.content["msg"]?.jsonPrimitive?.content ?: "Error"
+            }
+            else -> {
+                errorMsg = "Expected join message from server, got $msg"
+            }
         }
+
         val roomName = msg.content["roomName"]?.jsonPrimitive?.content ?: ""
         // Start listening for future messages?
-        this.color = ""
+        this.color = colorStr
         this.userName = username
         this.roomName = roomName
         notifyObservers(ConnectionStatus(true, "", "Color is $colorStr, Room is $roomName"))
-        return this.color
+        return errorMsg
     }
 
-    suspend fun joinRoom(roomName: String, username: String): String {
+    suspend fun joinRoom(roomName: String, username: String): String? {
         val joinMsg = Message(
             type = Message.Type.JOIN,
             content = buildJsonObject {
@@ -88,18 +99,27 @@ class Session(
             timestamp = 0.toULong()
         )
         send(joinMsg)
+
+        var errorMsg: String? = null
+        var colorStr = "#000000"
+
         val msg = receive()
-        val colorStr = if (msg.type == Message.Type.JOIN) {
-            msg.content["color"]?.jsonPrimitive?.content ?: "#000000"
-        } else {
-            throw IllegalStateException("Expected join message from server, got $msg")
+        when(msg.type) {
+            Message.Type.JOIN -> {
+                colorStr = msg.content["color"]?.jsonPrimitive?.content ?: "#000000"
+            }
+            Message.Type.ERROR -> {
+                errorMsg = msg.content["msg"]?.jsonPrimitive?.content ?: "Error"
+            }
+            else -> {
+                errorMsg = "Expected join message from server, got $msg"
+            }
         }
-        // Start listening for future messages?
-        this.color = ""
+        this.color = colorStr
         this.userName = username
         this.roomName = roomName
         notifyObservers(ConnectionStatus(true, "", "Color is $colorStr, Room is $roomName"))
-        return this.color
+        return errorMsg
     }
 
     suspend fun start() {

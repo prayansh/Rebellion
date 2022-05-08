@@ -60,15 +60,7 @@ class Room(
 ) {
     val clients: MutableSet<Connection> = Collections.synchronizedSet(LinkedHashSet())
 
-    val colorSet = arrayOf(
-        "#12CBC4",
-        "#9980FA",
-        "#FFC312",
-        "#C4E538",
-        "#FDA7DF",
-        "#0652DD",
-    )
-
+    val colorSet = PlayerColors
     val size get() = clients.size
     var gameStarted: Boolean = false
     lateinit var gameState: GameState
@@ -224,6 +216,8 @@ fun Application.configureSockets(
                             thisConnection.sendError("Room not found")
                         } else if (room.gameStarted) {
                             thisConnection.sendError("Game room has already started")
+                        } else if (room.clients.size == 6) {
+                            thisConnection.sendError("Game room is full")
                         } else {
                             val color = room.addClient(thisConnection)
                             msg.content["userName"]?.jsonPrimitive?.content?.let {

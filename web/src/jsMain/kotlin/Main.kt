@@ -1,8 +1,5 @@
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import com.prayansh.coup.model.Influence
-import com.prayansh.coup.model.Player
-import com.prayansh.coup.model.Role
 import io.ktor.client.*
 import io.ktor.client.engine.js.*
 import io.ktor.client.features.websocket.*
@@ -11,10 +8,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.web.css.*
 import org.jetbrains.compose.web.renderComposable
-import views.CreateRoom
-import views.GameView
-import views.JoinRoom
-import views.LobbyScreen
+import views.*
 
 object AppStylesheet : StyleSheet() {
 
@@ -62,7 +56,7 @@ val client = HttpClient(Js) {
 }
 
 enum class ScreenState {
-    LOBBY, JOIN, CREATE, GAME
+    LOBBY, JOIN, CREATE, GAME, ERROR
 }
 
 val scope = MainScope()
@@ -82,19 +76,23 @@ fun main() {
     var roomCode = mutableStateOf("")
     renderComposable(rootElementId = "root") {
         val (screenState, setScreenState) = remember { mutableStateOf(ScreenState.LOBBY) }
+        val (errorMsg, setErrorMsg) = remember { mutableStateOf("") }
         Style(AppStylesheet)
         when (screenState) {
             ScreenState.LOBBY -> {
-                LobbyScreen(setScreenState)
+                LobbyScreen(setScreenState, setErrorMsg)
             }
             ScreenState.JOIN -> {
-                JoinRoom(session, setScreenState)
+                JoinRoom(session, setScreenState, setErrorMsg)
             }
             ScreenState.CREATE -> {
-                CreateRoom(session, setScreenState)
+                CreateRoom(session, setScreenState, setErrorMsg)
             }
             ScreenState.GAME -> {
                 GameView(session)
+            }
+            ScreenState.ERROR -> {
+                ErrorScreen(errorMsg)
             }
         }
     }

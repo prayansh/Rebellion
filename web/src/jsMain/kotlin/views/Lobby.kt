@@ -12,11 +12,12 @@ import kotlinx.serialization.json.Json
 import org.jetbrains.compose.web.css.*
 import org.jetbrains.compose.web.dom.Button
 import org.jetbrains.compose.web.dom.Div
+import org.jetbrains.compose.web.dom.Span
 import org.jetbrains.compose.web.dom.Text
 import scope
 
 @Composable
-fun LobbyScreen(setScreenState: (ScreenState) -> Unit) {
+fun LobbyScreen(setScreenState: (ScreenState) -> Unit, setErrorMsg: (String) -> Unit) {
     Div {
         Button(
             attrs = {
@@ -40,7 +41,7 @@ fun LobbyScreen(setScreenState: (ScreenState) -> Unit) {
 }
 
 @Composable
-fun CreateRoom(session: Session, setScreenState: (ScreenState) -> Unit) {
+fun CreateRoom(session: Session, setScreenState: (ScreenState) -> Unit, setErrorMsg: (String) -> Unit) {
     val username = remember { mutableStateOf("") }
     val waiting = remember { mutableStateOf(false) }
     if (!waiting.value) {
@@ -56,8 +57,13 @@ fun CreateRoom(session: Session, setScreenState: (ScreenState) -> Unit) {
             InputText("Your name", username)
             ClickableButton("Create", onClick = { event ->
                 scope.launch {
-                    session.createRoom(username.value)
-                    waiting.value = true
+                    val error = session.createRoom(username.value)
+                    if (error != null) {
+                        setScreenState(ScreenState.ERROR)
+                        setErrorMsg(error)
+                    } else {
+                        waiting.value = true
+                    }
                 }
             })
         }
@@ -89,7 +95,7 @@ fun CreateRoom(session: Session, setScreenState: (ScreenState) -> Unit) {
 }
 
 @Composable
-fun JoinRoom(session: Session, setScreenState: (ScreenState) -> Unit) {
+fun JoinRoom(session: Session, setScreenState: (ScreenState) -> Unit, setErrorMsg: (String) -> Unit) {
     val username = remember { mutableStateOf("") }
     val roomCode = remember { mutableStateOf("") }
     val waiting = remember { mutableStateOf(false) }
@@ -113,8 +119,13 @@ fun JoinRoom(session: Session, setScreenState: (ScreenState) -> Unit) {
             )
             ClickableButton("Join", onClick = { event ->
                 scope.launch {
-                    session.joinRoom(roomCode.value, username.value)
-                    waiting.value = true
+                    val error = session.joinRoom(roomCode.value, username.value)
+                    if (error != null) {
+                        setScreenState(ScreenState.ERROR)
+                        setErrorMsg(error)
+                    } else {
+                        waiting.value = true
+                    }
                 }
             })
         }
@@ -138,6 +149,15 @@ fun JoinRoom(session: Session, setScreenState: (ScreenState) -> Unit) {
                     setScreenState(ScreenState.GAME)
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun ErrorScreen(msg: String) {
+    Div {
+        Span(attrs = { style { fontSize(24.px); } }) {
+            Text(msg)
         }
     }
 }
