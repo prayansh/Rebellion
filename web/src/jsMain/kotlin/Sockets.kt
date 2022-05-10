@@ -14,7 +14,7 @@ import kotlinx.serialization.json.Json
 suspend fun HttpClient.setupSession(readChannel: SendChannel<String>, sendChannel: ReceiveChannel<String>) {
     Logger.info("Starting websocket connection")
     val protocol = if (window.location.origin.contains("https://")) URLProtocol.WSS else URLProtocol.WS
-    val host = window.location.host
+    val host = window.location.hostname
     this.webSocket(
         {
             this.method = HttpMethod.Get

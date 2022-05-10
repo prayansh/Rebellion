@@ -5,23 +5,28 @@ import com.prayansh.coup.model.GameState
 import com.prayansh.coup.model.Message
 import com.prayansh.coup.server.session.Connection
 import com.prayansh.coup.server.session.Room
+import com.prayansh.coup.server.session.RoomsManager
 import com.prayansh.coup.server.updateGameState
 import io.ktor.server.application.*
 import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
 import io.lettuce.core.ExperimentalLettuceCoroutinesApi
-import io.lettuce.core.pubsub.StatefulRedisPubSubConnection
+import io.lettuce.core.RedisClient
+import io.lettuce.core.api.coroutines
 import kotlinx.serialization.json.*
 import java.time.Duration
 import java.util.*
 import kotlin.random.Random
 
+
 @ExperimentalLettuceCoroutinesApi
 fun Application.configureSockets(
-    redisConn: StatefulRedisPubSubConnection<String, String>,
-    subscribeRedis: StatefulRedisPubSubConnection<String, String>
+    redisClient: RedisClient
 ) {
+    val publishRedis = redisClient.connectPubSub()
+    val subscribeRedis = redisClient.connectPubSub()
+    val storeRedis = redisClient.connect().coroutines()
     install(WebSockets) {
         pingPeriod = Duration.ofSeconds(15)
         timeout = Duration.ofSeconds(15)
@@ -29,7 +34,7 @@ fun Application.configureSockets(
         masking = false
     }
     routing {
-        val rooms = Collections.synchronizedMap(LinkedHashMap<String, Room>())
+        val roomsManager = RoomsManager(storeRedis, subscribeRedis, publishRedis)
         webSocket("/coup") {
             println("Adding user!")
             val thisConnection = Connection(this)
@@ -41,9 +46,9 @@ fun Application.configureSockets(
                         timestamp = Date().time.toULong(),
                         content = buildJsonObject {
                             put("rooms", buildJsonArray {
-                                rooms.keys.forEach {
-                                    add(it)
-                                }
+//                                rooms.keys.forEach {
+//                                    add(it)
+//                                }
                             })
                         }
                     )
@@ -54,65 +59,48 @@ fun Application.configureSockets(
                 // Join ROOM
                 when (msg.type) {
                     Message.Type.CREATE -> {
-                        val roomName = uuid()
-                        if (rooms.contains(roomName)) {
-                            thisConnection.sendError("Room already created")
-                        } else {
-                            val room = Room(
-                                roomName = roomName,
-                                subscribeRedis = subscribeRedis,
-                                publishRedis = redisConn
+                        val room = roomsManager.createRoom()
+                        msg.content["userName"]?.jsonPrimitive?.content?.let {
+                            thisConnection.name = it
+                        }
+                        val color = room.addClient(thisConnection)
+                        thisConnection.send(
+                            Message(
+                                type = Message.Type.JOIN,
+                                timestamp = Date().time.toULong(),
+                                content = buildJsonObject {
+                                    put("roomName", room.roomName)
+                                    put("color", color)
+                                }
                             )
-                            rooms[roomName] = room
-                            msg.content["userName"]?.jsonPrimitive?.content?.let {
-                                thisConnection.name = it
-                            }
-                            val color = room.addClient(thisConnection)
-                            thisConnection.send(
+                        )
+                        thisConnection.room = room
+                        println("Waiting for start")
+                        // WAIT FOR START, but only for creator
+                        val start = incoming.receive() as? Frame.Text ?: throw Exception("expected start message")
+                        println("Received start")
+                        val m: Message = start.toMessage()
+                        if (m.type == Message.Type.START) {
+                            room.startGame()
+                            // broadcast start to everyone
+                            room.broadcast(
                                 Message(
-                                    type = Message.Type.JOIN,
+                                    type = Message.Type.START,
                                     timestamp = Date().time.toULong(),
-                                    content = buildJsonObject {
-                                        put("roomName", roomName)
-                                        put("color", color)
-                                    }
+                                    content = Json.encodeToJsonElement(
+                                        GameState.serializer(),
+                                        room.gameState!!
+                                    ).jsonObject
                                 )
                             )
-                            thisConnection.room = room
-                            println("Waiting for start")
-                            // WAIT FOR START, but only for creator
-                            val start = incoming.receive() as? Frame.Text ?: throw Exception("expected start message")
-                            println("Received start")
-                            val m: Message = start.toMessage()
-                            if (m.type == Message.Type.START) {
-                                room.startGame()
-                                // broadcast start to everyone
-                                room.broadcast(
-                                    Message(
-                                        type = Message.Type.START,
-                                        timestamp = Date().time.toULong(),
-                                        content = Json.encodeToJsonElement(
-                                            GameState.serializer(),
-                                            room.gameState!!
-                                        ).jsonObject
-                                    )
-                                )
-                            } else {
-                                thisConnection.sendError("expected start Message")
-                            }
+                        } else {
+                            thisConnection.sendError("expected start Message")
                         }
                     }
                     Message.Type.JOIN -> {
-                        val roomName = msg.content["roomName"]?.jsonPrimitive?.content
-                        // TODO verify room code
-                        val room = rooms[roomName]
-                        if (room == null) {
-                            thisConnection.sendError("Room not found")
-                        } else if (room.gameStarted) {
-                            thisConnection.sendError("Game room has already started")
-                        } else if (room.clients.size == 6) {
-                            thisConnection.sendError("Game room is full")
-                        } else {
+                        try {
+                            val roomName = msg.content["roomName"]?.jsonPrimitive?.content ?: ""
+                            val room = roomsManager.findRoom(roomName)
                             val color = room.addClient(thisConnection)
                             msg.content["userName"]?.jsonPrimitive?.content?.let {
                                 thisConnection.name = it
@@ -128,6 +116,8 @@ fun Application.configureSockets(
                                 )
                             )
                             thisConnection.room = room
+                        } catch (ex: RoomsManager.RoomException) {
+                            thisConnection.sendError(ex.roomError)
                         }
                     }
                     else -> {
@@ -147,7 +137,9 @@ fun Application.configureSockets(
                             try {
                                 val data =
                                     Json.decodeFromJsonElement(Content.MoveData.serializer(), incomingMsg.content)
-                                val room = rooms[data.roomName]
+
+                                // TODO synchronize data across rooms using REDIS
+                                val room = roomsManager.rooms[data.roomName]
                                 room?.let {
                                     val newState = updateGameState(it.gameState, data.move)
                                     it.gameState = newState
@@ -186,15 +178,6 @@ fun Application.configureSockets(
             }
         }
     }
-}
-
-const val ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-fun uuid(): String {
-    val random = Random(System.currentTimeMillis())
-    return (1..8)
-        .map { random.nextInt(0, ALPHABET.length) }
-        .map(ALPHABET::get)
-        .joinToString("")
 }
 
 fun Frame.Text.toMessage(): Message {

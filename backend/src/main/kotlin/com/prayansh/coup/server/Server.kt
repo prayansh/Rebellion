@@ -26,8 +26,6 @@ fun main() {
     val redisUrl = envVar("REDIS_URL", "redis://password@localhost:6379/0")
     val port = envVar("PORT", "80").toInt()
     val redisClient = RedisClient.create(redisUrl)
-    val redis1 = redisClient.connectPubSub()
-    val redis2 = redisClient.connectPubSub()
     embeddedServer(Netty, port = port) {
         install(Routing)
         install(ContentNegotiation) {
@@ -43,7 +41,7 @@ fun main() {
 
         }
         configureRouting()
-        configureSockets(redis1, redis2)
+        configureSockets(redisClient)
     }.start(wait = true)
 }
 
