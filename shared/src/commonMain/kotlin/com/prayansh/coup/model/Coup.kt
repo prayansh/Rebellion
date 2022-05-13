@@ -32,13 +32,8 @@ sealed class Move {
         override val description: String = "${player.name} collected tax (3 coins)"
     }
 
-//    @Serializable
-//    data class Exchange2(override val player: Player, val oldRole: Role, val newRole: Role) : Move() {
-//        override val description: String = "${player.name} exchanged their role"
-//    }
-
     @Serializable
-    data class Exchange(override val player: Player, val changes: List<Pair<Role, Role>>) : Move() {
+    data class Exchange(override val player: Player, val keep: List<Role>, val discard: List<Role>) : Move() {
         override val description: String = "${player.name} exchanged their role"
     }
 

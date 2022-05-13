@@ -121,7 +121,23 @@ fun GameState(session: Session, gameState: GameState, myself: Player) {
                             Text("Confirm influence to replace ${m.influence} with")
                             ClickableButton(choice.name) {
                                 scope.launch {
-                                    session.sendMove(Move.Exchange(myself, listOf(m.influence to choice)))
+                                    val other = myself.roles.let {
+                                        val (r1, r2) = it
+                                        if (r1.alive && r1.role != m.influence) {
+                                            r2.role
+                                        } else if (r2.alive && r2.role != m.influence) {
+                                            r1.role
+                                        } else {
+                                            null
+                                        }
+                                    }
+                                    session.sendMove(
+                                        Move.Exchange(
+                                            myself,
+                                            keep = buildList { add(choice); other?.let { add(it) } },
+                                            discard = listOf(m.influence)
+                                        )
+                                    )
                                 }
                             }
                         }
@@ -150,18 +166,19 @@ fun GameState(session: Session, gameState: GameState, myself: Player) {
                                 val chosenCount = choices.count { it.second.value }
                                 disable.value = chosenCount >= aliveCount
                                 choices.forEach { choice ->
-                                    MyCheckbox(choice.first.name, choice.second, !choice.second.value && disable.value)
+                                    MyCheckbox(
+                                        label = choice.first.name,
+                                        checked = choice.second,
+                                        disabled = !choice.second.value && disable.value
+                                    )
                                 }
                             }
                             ClickableButton("Submit") {
                                 scope.launch {
-                                    val changes =
-                                        choices.filter { it.second.value }
-                                            .zip(choices.filter { !it.second.value }) { a, b ->
-                                                b.first to a.first
-                                            }
-                                    if (changes.size == aliveCount) {
-                                        session.sendMove(Move.Exchange(myself, changes))
+                                    val discard = choices.filter { !it.second.value }.map { it.first }
+                                    val keep = choices.filter { it.second.value }.map { it.first }
+                                    if (keep.size == aliveCount) {
+                                        session.sendMove(Move.Exchange(myself, keep = keep, discard = discard))
                                     } else {
                                         error.value = "(Select only $aliveCount influence(s))"
                                     }
@@ -323,7 +340,7 @@ fun ActionsCard(session: Session, gameState: GameState) {
                         UserAction.EXCHANGE -> {
                             scope.launch {
                                 // cant exactly send move exchange, might need an intermediate
-                                session.sendMove(Move.Exchange(me, emptyList()))
+                                session.sendMove(Move.Exchange(me, emptyList(), emptyList()))
                             }
                         }
                     }

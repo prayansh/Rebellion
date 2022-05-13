@@ -190,4 +190,14 @@ class CoupGameTest {
             listOf(POLITICIAN, SNIPER, BODYGUARD, DIPLOMAT, BODYGUARD, SNIPER)
         )
     }
+
+    @Test
+    fun `exchangeRoles on show influence`() {
+        TODO()
+    }
+
+    @Test
+    fun `exchangeRoles on show influence (when 1 alive)`() {
+        TODO()
+    }
 }

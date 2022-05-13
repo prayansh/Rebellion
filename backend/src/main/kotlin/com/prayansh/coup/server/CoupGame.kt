@@ -184,28 +184,25 @@ fun updateGameState(gs: GameState, move: Move): GameState {
             when (move) {
                 is Move.Exchange -> {
                     val nextPlayer = (gs.currentPlayer + 1) % gs.players.size
-                    val oldRoles = move.changes.map { it.first }
-                    val newRoles = move.changes.map { it.second }
+                    val discard = move.discard
+                    val keep = move.keep.toMutableList()
                     val newDeck = gs.deck.toMutableList().apply {
-                        newRoles.forEach {
-                            remove(it)
-                        }
-                        oldRoles.forEach {
+                        discard.forEach {
                             add(it)
                         }
                         shuffle()
                     }
                     val newPlayers = gs.players.map { p ->
                         if (p sameAs move.player) {
-                            var (r1, r2) = p.roles
-                            move.changes.forEach {
-                                if (r1.alive && r1.role == it.first) {
-                                    r1 = r1.copy(role = it.second)
-                                } else if (r2.alive && r2.role == it.first) {
-                                    r2 = r2.copy(role = it.second)
+                            val roles = p.roles.toList().map {
+                                if (it.alive) {
+                                    val removed = keep.removeAt(0)
+                                    it.copy(role = removed)
+                                } else {
+                                    it
                                 }
                             }
-                            p.copy(roles = r1 to r2) // exchange influence
+                            p.copy(roles = roles[0] to roles[1]) // exchange influence
                         } else {
                             p
                         }
@@ -337,9 +334,10 @@ fun applyMove(gs: GameState, passedMove: Move): GameState {
         }
         is Move.Exchange -> {
             newGameState = gs.copy(
+                deck = gs.deck.drop(2),
                 currentState = State.ExchangeInfluence(
                     player = passedMove.player,
-                    choices = listOf(gs.deck[0], gs.deck[1]), // first in the new deck
+                    choices = gs.deck.take(2),
                     move = passedMove
                 ),
                 logs = gs.logs.toMutableList().apply { add(passedMove.description + " PASSED") }
