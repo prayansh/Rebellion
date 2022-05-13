@@ -22,6 +22,7 @@ dependencies {
 	implementation(project(":shared"))
 	testImplementation(Deps.Ktor.Server.tests)
 	testImplementation(Deps.JetBrains.Kotlin.testJunit)
+	testImplementation(Deps.Testing.kotestAssertions)
 }
 
 

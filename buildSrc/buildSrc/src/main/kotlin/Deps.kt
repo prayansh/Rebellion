@@ -64,4 +64,8 @@ object Deps {
 
 	}
 
+    object Testing {
+        const val kotestAssertions = "io.kotest:kotest-assertions-core:5.3.0"
+    }
+
 }
