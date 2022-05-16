@@ -77,7 +77,7 @@ fun updateGameState(gs: GameState, move: Move): GameState {
                     val player = gs.players.find { it sameAs move.action.player }!!
                     val (r1, r2) = player.roles
                     newGameState = if (proofList.any { it == r1.role || it == r2.role }) {
-                        // Player has the influence ask them to show
+                        // Player has the influence ask them to show, and TODO apply the challenged move
                         gs.copy(
                             currentState = State.ShowInfluence(move.action.player, move, proofList)
                         )
@@ -107,10 +107,7 @@ fun updateGameState(gs: GameState, move: Move): GameState {
                     )
                     if (pendingPlayers.isEmpty()) { // Everyone passed the move
                         val passedMove = state.move
-                        println("$passedMove was passed")
-                        println("Old GameState: $newGameState")
                         newGameState = applyMove(newGameState, passedMove)
-                        println("New GameState: $newGameState")
                     }
                 }
                 else -> {
@@ -145,7 +142,7 @@ fun updateGameState(gs: GameState, move: Move): GameState {
                     }
 
                     if (newPlayersList.size == 1) {
-                        val winner = gs.players[0]
+                        val winner = newPlayersList[0]
                         newGameState = gs.copy(
                             players = newPlayersList,
                             currentState = State.GameOver(winner),
@@ -154,7 +151,7 @@ fun updateGameState(gs: GameState, move: Move): GameState {
                                 add("${winner.name} has won the game")
                             }
                         )
-                    } else {
+                    } else { // move to next player
                         // This is tough logic IMO, change carefully
                         val nextPlayer = if (playerRemoved == -1) {
                             (gs.currentPlayer + 1) % gs.players.size
@@ -173,6 +170,51 @@ fun updateGameState(gs: GameState, move: Move): GameState {
                             currentState = State.Turn(gs.players[nextPlayer]),
                             logs = gs.logs.toMutableList().apply { add(move.description) }
                         )
+
+                        if (state.move is Move.Show) {
+                            // TODO refine
+                            val show = state.move as Move.Show
+                            // Surrender came from someone proving their role, unwrap the original move
+                            val passedMove = show.challenge.action
+                            var flavorLog = ""
+                            val checkAlive: (Player) -> Boolean = { p ->
+                                newGameState.players.any { it sameAs p }
+                            }
+                            // Check if the move is still valid to perform
+                            val validMove = when (passedMove) {
+                                is Move.Assassinate -> checkAlive(passedMove.victim).also { flavorLog = flavorLog(passedMove, it) }
+                                is Move.Block -> when (val m = passedMove.action) {
+                                    is Move.ForeignAid -> true
+                                    is Move.Assassinate -> checkAlive(m.victim).also { flavorLog = flavorLog(passedMove, it) }
+                                    is Move.Steal -> checkAlive(m.victim).also { flavorLog = flavorLog(passedMove, it) }
+                                    else -> false // this should not happen so its not valid
+                                }
+                                is Move.Steal -> checkAlive(passedMove.victim).also { flavorLog = flavorLog(passedMove, it) }
+                                else -> true
+                            }
+                            if (validMove) {
+                                // Go back one player... for apply move to increment it later
+                                // Might need to rethink this a bit
+                                newGameState = applyMove(
+                                    newGameState.let {
+                                        it.copy(
+                                            currentPlayer = it.currentPlayer - 1,
+                                        )
+                                    },
+                                    passedMove
+                                )
+                            } else {
+                                newGameState = newGameState.let {
+                                    it.copy(
+                                        logs = it.logs.toMutableList().apply {
+                                            if (flavorLog.isNotEmpty()) {
+                                                add(flavorLog)
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
                 else -> {
@@ -237,21 +279,24 @@ fun updateGameState(gs: GameState, move: Move): GameState {
         is State.ShowInfluence -> {
             when (move) {
                 is Move.Show -> {
-                    // TODO verify the showcase
-
-                    val deck = gs.deck.toMutableList().apply {
-                        add(move.influence) // add back influence
-                        shuffle()
-                    }
-                    // dont actually set this deck, its done later in the exchange influence,
-                    // this is just to create the choices
-                    newGameState = gs.copy(
-                        currentState = State.ExchangeInfluence(
-                            player = move.player,
-                            choices = listOf(deck.first()), // first in the new deck
-                            move = move
+                    if (move.influence in state.proofList) {
+                        val deck = gs.deck.toMutableList().apply {
+                            add(move.influence) // add back influence
+                            shuffle()
+                        }
+                        // dont actually set this deck, its done later in the exchange influence,
+                        // this is just to create the choices
+                        newGameState = gs.copy(
+                            currentState = State.ExchangeInfluence(
+                                player = move.player,
+                                choices = listOf(deck.first()), // first in the new deck
+                                move = move
+                            )
                         )
-                    )
+                    } else {
+                        // keep the same state
+                        newGameState = gs
+                    }
                 }
                 else -> {
                     println("Bad move received: ($move, $gs)")

@@ -207,5 +207,32 @@ sealed class State {
     }
 
     @Serializable
-    data class GameOver(val winner: Player): State()
+    data class GameOver(val winner: Player) : State()
+}
+
+fun flavorLog(move: Move, isDeadFlavor: Boolean = false): String {
+    return if (isDeadFlavor) {
+        when (move) {
+            is Move.Assassinate -> "Stop it ${move.player.name}!! smh, ${move.victim.name} is already dead"
+            is Move.Steal -> "Grave Robbing!! smh, ${move.victim} is already dead"
+//            is Move.Block -> "Grave Robbing!! smh, ${move.victim} is already dead"
+//            is Move.Challenge -> "Grave Robbing!! smh, ${move.victim} is already dead"
+            else -> ""
+        }
+    } else {
+        when (move) {
+            is Move.Assassinate -> "TODO()"
+            is Move.Block -> "TODO()"
+            is Move.Challenge -> "TODO()"
+            is Move.Coup -> "TODO()"
+            is Move.Exchange -> "TODO()"
+            is Move.ForeignAid -> "TODO()"
+            is Move.Income -> "TODO()"
+            is Move.Pass -> "TODO()"
+            is Move.Show -> "TODO()"
+            is Move.Steal -> "TODO()"
+            is Move.Surrender -> "TODO()"
+            is Move.Tax -> "TODO()"
+        }
+    }
 }

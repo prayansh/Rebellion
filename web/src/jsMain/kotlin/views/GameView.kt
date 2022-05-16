@@ -93,14 +93,14 @@ fun GameState(session: Session, gameState: GameState, myself: Player) {
                 Div {
                     val (r1, r2) = myself.roles
                     Text("Choose role to prove your action")
-                    if (r1.alive) {
+                    if (r1.alive && r1.role in state.proofList) {
                         ClickableButton(r1.role.name) {
                             scope.launch {
                                 session.sendMove(Move.Show(myself, r1.role, state.challenge))
                             }
                         }
                     }
-                    if (r2.alive) {
+                    if (r2.alive && r2.role in state.proofList) {
                         ClickableButton(r2.role.name) {
                             scope.launch {
                                 session.sendMove(Move.Show(myself, r2.role, state.challenge))
@@ -123,9 +123,9 @@ fun GameState(session: Session, gameState: GameState, myself: Player) {
                                 scope.launch {
                                     val other = myself.roles.let {
                                         val (r1, r2) = it
-                                        if (r1.alive && r1.role != m.influence) {
+                                        if (r1.alive && r1.role == m.influence) {
                                             r2.role
-                                        } else if (r2.alive && r2.role != m.influence) {
+                                        } else if (r2.alive && r2.role == m.influence) {
                                             r1.role
                                         } else {
                                             null
