@@ -1,5 +1,6 @@
 package com.prayansh.coup.server.session
 
+import com.prayansh.coup.model.Content
 import com.prayansh.coup.model.Message
 import io.ktor.websocket.*
 import kotlinx.serialization.encodeToString
@@ -33,9 +34,9 @@ class Connection(val session: DefaultWebSocketSession) {
             Message(
                 type = Message.Type.ERROR,
                 timestamp = Date().time.toULong(),
-                content = buildJsonObject {
-                    put("msg", msg)
-                }
+                content = Content.Error(
+                    errorMessage = msg
+                )
             )
         )
     }

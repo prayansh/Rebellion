@@ -30,9 +30,9 @@ import kotlin.random.Random
 /*
 Redis Storage:
 - HSET redisRoomKey()
-  - memCount (HINCRBY myhash field 1)
   - gameStarted (HSET myhash started true)
   - state (HSET myhash state true)
+- LPUSH redisRoomMembersKey()
  */
 
 class RoomsManager(

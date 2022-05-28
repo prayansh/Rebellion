@@ -5,6 +5,7 @@ import Session
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import com.prayansh.coup.model.Content
 import com.prayansh.coup.model.GameState
 import com.prayansh.coup.model.Message
 import kotlinx.coroutines.launch
@@ -73,7 +74,8 @@ fun CreateRoom(session: Session, setScreenState: (ScreenState) -> Unit, setError
                     val msg = session.receive()
                     Logger.debug("Received ${msg.content}")
                     if (msg.type == Message.Type.START) {
-                        session.gameState = Json.decodeFromJsonElement(GameState.serializer(), msg.content)
+                        val content = msg.content as Content.GameData
+                        session.gameState = content.gameState
                         setScreenState(ScreenState.GAME)
                     }
                 }
@@ -133,7 +135,8 @@ fun JoinRoom(session: Session, setScreenState: (ScreenState) -> Unit, setErrorMs
                 val msg = session.receive()
                 Logger.debug("Received ${msg.content}")
                 if (msg.type == Message.Type.START) {
-                    session.gameState = Json.decodeFromJsonElement(GameState.serializer(), msg.content)
+                    val content = msg.content as Content.GameData
+                    session.gameState = content.gameState
                     setScreenState(ScreenState.GAME)
                 }
             }

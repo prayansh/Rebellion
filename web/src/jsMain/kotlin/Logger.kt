@@ -23,3 +23,8 @@ object Logger {
         log(msg, level)
     }
 }
+
+//@JsName("enableDebug")
+//fun Window.enableDebugLogs() {
+//    Logger.level = Logger.Level.DEBUG
+//}

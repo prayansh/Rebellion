@@ -1,11 +1,9 @@
 package com.prayansh.coup.server.plugins
 
 import com.prayansh.coup.model.Content
-import com.prayansh.coup.model.GameState
 import com.prayansh.coup.model.Message
 import com.prayansh.coup.server.envVar
 import com.prayansh.coup.server.session.Connection
-import com.prayansh.coup.server.session.Room
 import com.prayansh.coup.server.session.RoomsManager
 import com.prayansh.coup.server.updateGameState
 import io.ktor.server.application.*
@@ -18,13 +16,13 @@ import io.lettuce.core.api.coroutines
 import kotlinx.serialization.json.*
 import java.time.Duration
 import java.util.*
-import kotlin.random.Random
 
 
 @ExperimentalLettuceCoroutinesApi
 fun Application.configureSockets(
     redisClient: RedisClient
 ) {
+    val serverName = envVar("NAME", "unknown")
     val publishRedis = redisClient.connectPubSub()
     val subscribeRedis = redisClient.connectPubSub()
     val storeRedis = redisClient.connect().coroutines()
@@ -45,14 +43,10 @@ fun Application.configureSockets(
                     Message(
                         type = Message.Type.CONNECT,
                         timestamp = Date().time.toULong(),
-                        content = buildJsonObject {
-                            put("server", envVar("NAME", "unknown"))
-                            put("rooms", buildJsonArray {
-//                                rooms.keys.forEach {
-//                                    add(it)
-//                                }
-                            })
-                        }
+                        content = Content.Connect(
+                            serverName = serverName,
+                            rooms = emptyList()
+                        )
                     )
                 )
                 // Wait for join/create message
@@ -61,18 +55,20 @@ fun Application.configureSockets(
                 // Join ROOM
                 when (msg.type) {
                     Message.Type.CREATE -> {
+                        val content = msg.content as Content.Create
                         val room = roomsManager.createRoom()
-                        val name = msg.content["userName"]?.jsonPrimitive?.content ?: "unknown_name"
-                        val color = room.addClient(thisConnection, name)
+                        val userName = content.userName
+                        val color = room.addClient(thisConnection, userName)
                         room.persistState()
                         thisConnection.send(
                             Message(
                                 type = Message.Type.JOIN,
                                 timestamp = Date().time.toULong(),
-                                content = buildJsonObject {
-                                    put("roomName", room.roomName)
-                                    put("color", color)
-                                }
+                                content = Content.Join(
+                                    userName = userName,
+                                    roomName = room.roomName,
+                                    color = color
+                                )
                             )
                         )
                         thisConnection.room = room
@@ -89,10 +85,10 @@ fun Application.configureSockets(
                                 Message(
                                     type = Message.Type.START,
                                     timestamp = Date().time.toULong(),
-                                    content = Json.encodeToJsonElement(
-                                        GameState.serializer(),
-                                        room.gameState!!
-                                    ).jsonObject
+                                    content = Content.GameData(
+                                        roomName = room.roomName,
+                                        gameState = room.gameState
+                                    )
                                 )
                             )
                         } else {
@@ -101,18 +97,20 @@ fun Application.configureSockets(
                     }
                     Message.Type.JOIN -> {
                         try {
-                            val roomName = msg.content["roomName"]?.jsonPrimitive?.content ?: ""
-                            val name = msg.content["userName"]?.jsonPrimitive?.content ?: "unknown_name"
+                            val content = msg.content as Content.Join
+                            val roomName = content.roomName
+                            val userName = content.userName
                             val room = roomsManager.findRoom(roomName)
-                            val color = room.addClient(thisConnection, name)
+                            val color = room.addClient(thisConnection, userName)
                             thisConnection.send(
                                 Message(
                                     type = Message.Type.JOIN,
                                     timestamp = Date().time.toULong(),
-                                    content = buildJsonObject {
-                                        put("roomName", roomName)
-                                        put("color", color)
-                                    }
+                                    content = Content.Join(
+                                        roomName = room.roomName,
+                                        color = color,
+                                        userName = userName
+                                    )
                                 )
                             )
                             thisConnection.room = room
@@ -135,8 +133,7 @@ fun Application.configureSockets(
                         }
                         Message.Type.MOVE -> {
                             try {
-                                val data =
-                                    Json.decodeFromJsonElement(Content.MoveData.serializer(), incomingMsg.content)
+                                val data = incomingMsg.content as Content.MoveData
 
                                 val room = roomsManager.rooms[data.roomName]
                                 room?.let {
@@ -150,13 +147,10 @@ fun Application.configureSockets(
                                         msg = Message(
                                             type = Message.Type.GAME,
                                             timestamp = Date().time.toULong(),
-                                            content = Json.encodeToJsonElement(
-                                                Content.GameData.serializer(),
-                                                Content.GameData(
-                                                    roomName = it.roomName,
-                                                    gameState = newState
-                                                )
-                                            ).jsonObject
+                                            content = Content.GameData(
+                                                roomName = it.roomName,
+                                                gameState = newState
+                                            )
                                         )
                                     )
                                 }

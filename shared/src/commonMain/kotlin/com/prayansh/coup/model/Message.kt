@@ -6,7 +6,7 @@ import kotlinx.serialization.json.JsonObject
 @Serializable
 class Message(
     val type: Type,
-    val content: JsonObject,
+    val content: Content,
     val timestamp: ULong
 ) {
     enum class Type {
@@ -21,6 +21,7 @@ class Message(
 sealed class Content {
     @Serializable
     data class Connect(
+        val serverName: String,
         val rooms: List<String>,
     ) : Content()
 
@@ -49,4 +50,19 @@ sealed class Content {
         val roomName: String,
         val gameState: GameState
     ) : Content()
+
+    @Serializable
+    data class Initiate(
+        val roomName: String
+    ) : Content()
+
+    @Serializable
+    data class Exit(
+        val roomName: String
+    ) : Content()
+
+    @Serializable
+    data class Error(
+        val errorMessage: String
+    ): Content()
 }

@@ -25,8 +25,7 @@ fun GameView(session: Session) {
         while (true) {
             val msg = session.receive()
             if (msg.type == Message.Type.GAME) {
-                Logger.debug("Received ${msg.content}")
-                val content = Json.decodeFromJsonElement(Content.GameData.serializer(), msg.content)
+                val content = msg.content as Content.GameData
                 Logger.debug("Received data: $content")
                 setGameState(content.gameState)
             }

@@ -59,68 +59,75 @@ class Session(
     suspend fun createRoom(username: String): String? {
         val createMsg = Message(
             type = Message.Type.CREATE,
-            content = buildJsonObject {
-                put("userName", username)
-            },
+            content = Content.Create(
+                userName = username,
+                color = ""
+            ),
             timestamp = 0.toULong()
         )
         send(createMsg)
 
         var errorMsg: String? = null
-        var colorStr = "#000000"
-
         val msg = receive()
-        when(msg.type) {
+        when (msg.type) {
             Message.Type.JOIN -> {
-                colorStr = msg.content["color"]?.jsonPrimitive?.content ?: "#000000"
+                val content = msg.content as Content.Join
+                val colorStr = content.color
+                val roomName = content.roomName
+                // Start listening for future messages?
+                this.color = colorStr
+                this.userName = username
+                this.roomName = roomName
+                notifyObservers(ConnectionStatus(true, "", "Color is $colorStr, Room is $roomName"))
             }
             Message.Type.ERROR -> {
-                errorMsg = msg.content["msg"]?.jsonPrimitive?.content ?: "Error"
+                val content = msg.content as Content.Error
+                errorMsg = content.errorMessage
+                return errorMsg
             }
             else -> {
                 errorMsg = "Expected join message from server, got $msg"
+                return errorMsg
             }
         }
-
-        val roomName = msg.content["roomName"]?.jsonPrimitive?.content ?: ""
-        // Start listening for future messages?
-        this.color = colorStr
-        this.userName = username
-        this.roomName = roomName
-        notifyObservers(ConnectionStatus(true, "", "Color is $colorStr, Room is $roomName"))
         return errorMsg
     }
 
     suspend fun joinRoom(roomName: String, username: String): String? {
         val joinMsg = Message(
             type = Message.Type.JOIN,
-            content = buildJsonObject {
-                put("userName", username)
-                put("roomName", roomName)
-            },
+            content = Content.Join(
+                userName = username,
+                roomName = roomName,
+                color = "",
+            ),
             timestamp = 0.toULong()
         )
         send(joinMsg)
 
         var errorMsg: String? = null
-        var colorStr = "#000000"
-
         val msg = receive()
-        when(msg.type) {
+        when (msg.type) {
             Message.Type.JOIN -> {
-                colorStr = msg.content["color"]?.jsonPrimitive?.content ?: "#000000"
+                val content = msg.content as Content.Join
+                val colorStr = content.color
+                val roomName = content.roomName
+                // Start listening for future messages?
+                this.color = colorStr
+                this.userName = username
+                this.roomName = roomName
+                notifyObservers(ConnectionStatus(true, "", "Color is $colorStr, Room is $roomName"))
             }
             Message.Type.ERROR -> {
-                errorMsg = msg.content["msg"]?.jsonPrimitive?.content ?: "Error"
+                val content = msg.content as Content.Error
+                errorMsg = content.errorMessage
+                return errorMsg
             }
             else -> {
                 errorMsg = "Expected join message from server, got $msg"
+                return errorMsg
             }
         }
-        this.color = colorStr
-        this.userName = username
-        this.roomName = roomName
-        notifyObservers(ConnectionStatus(true, "", "Color is $colorStr, Room is $roomName"))
         return errorMsg
     }
 
@@ -128,9 +135,9 @@ class Session(
         val startMsg = Message(
             type = Message.Type.START,
             timestamp = 0.toULong(),
-            content = buildJsonObject {
-                put("roomName", roomName)
-            }
+            content = Content.Initiate(
+                roomName = roomName,
+            )
         )
         send(startMsg)
     }
@@ -154,9 +161,9 @@ class Session(
     suspend fun exit() {
         val msg = Message(
             type = Message.Type.EXIT,
-            content = buildJsonObject {
-                put("roomName", roomName)
-            },
+            content = Content.Exit(
+                roomName = roomName
+            ),
             timestamp = 0.toULong()
         )
         send(msg)
@@ -179,13 +186,10 @@ class Session(
             Message(
                 type = Message.Type.MOVE,
                 timestamp = 0.toULong(),
-                content = Json.encodeToJsonElement(
-                    Content.MoveData.serializer(),
-                    Content.MoveData(
-                        roomName = roomName,
-                        move = move
-                    )
-                ).jsonObject
+                content = Content.MoveData(
+                    roomName = roomName,
+                    move = move
+                )
             )
         )
     }
