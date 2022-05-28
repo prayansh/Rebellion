@@ -13,12 +13,25 @@ import kotlinx.serialization.json.Json
 
 suspend fun HttpClient.setupSession(readChannel: SendChannel<String>, sendChannel: ReceiveChannel<String>) {
     Logger.info("Starting websocket connection")
-    val protocol = if (window.location.origin.contains("https://")) URLProtocol.WSS else URLProtocol.WS
-    val host = window.location.hostname
+    val loc = window.location
+    val port =
+        if (loc.port.isNotEmpty()) {
+            loc.port.toIntOrNull() ?: 8080
+        } else if(loc.protocol.contains("https")) {
+            443
+        } else {
+            80
+        }
+    val name = if (loc.protocol.contains("https")) {
+        "wss"
+    } else {
+        "ws"
+    }
+    val host = loc.hostname
     this.webSocket(
         {
             this.method = HttpMethod.Get
-            url(protocol.name, host, protocol.defaultPort, "/coup")
+            url(name, host, port, "/coup")
         },
     ) {
         val messageOutputRoutine = launch { sendTo(readChannel) }

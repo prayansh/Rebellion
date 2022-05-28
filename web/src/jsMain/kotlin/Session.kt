@@ -1,3 +1,4 @@
+import Logger.log
 import com.prayansh.coup.model.Content
 import com.prayansh.coup.model.GameState
 import com.prayansh.coup.model.Message
@@ -40,6 +41,7 @@ class Session(
             withTimeout(3 * 1000) {
                 val connect = receive()
                 return@withTimeout if (connect.type == Message.Type.CONNECT) {
+                    log(connect.content.toString(), Logger.Level.OFF)
                     notifyObservers(ConnectionStatus(true, "", "Waiting to connect to room"))
                     true
                 } else {

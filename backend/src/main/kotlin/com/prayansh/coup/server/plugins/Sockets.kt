@@ -3,6 +3,7 @@ package com.prayansh.coup.server.plugins
 import com.prayansh.coup.model.Content
 import com.prayansh.coup.model.GameState
 import com.prayansh.coup.model.Message
+import com.prayansh.coup.server.envVar
 import com.prayansh.coup.server.session.Connection
 import com.prayansh.coup.server.session.Room
 import com.prayansh.coup.server.session.RoomsManager
@@ -45,6 +46,7 @@ fun Application.configureSockets(
                         type = Message.Type.CONNECT,
                         timestamp = Date().time.toULong(),
                         content = buildJsonObject {
+                            put("server", envVar("NAME", "unknown"))
                             put("rooms", buildJsonArray {
 //                                rooms.keys.forEach {
 //                                    add(it)
@@ -60,10 +62,9 @@ fun Application.configureSockets(
                 when (msg.type) {
                     Message.Type.CREATE -> {
                         val room = roomsManager.createRoom()
-                        msg.content["userName"]?.jsonPrimitive?.content?.let {
-                            thisConnection.name = it
-                        }
-                        val color = room.addClient(thisConnection)
+                        val name = msg.content["userName"]?.jsonPrimitive?.content ?: "unknown_name"
+                        val color = room.addClient(thisConnection, name)
+                        room.persistState()
                         thisConnection.send(
                             Message(
                                 type = Message.Type.JOIN,
@@ -82,6 +83,7 @@ fun Application.configureSockets(
                         val m: Message = start.toMessage()
                         if (m.type == Message.Type.START) {
                             room.startGame()
+                            room.persistState()
                             // broadcast start to everyone
                             room.broadcast(
                                 Message(
@@ -100,11 +102,9 @@ fun Application.configureSockets(
                     Message.Type.JOIN -> {
                         try {
                             val roomName = msg.content["roomName"]?.jsonPrimitive?.content ?: ""
+                            val name = msg.content["userName"]?.jsonPrimitive?.content ?: "unknown_name"
                             val room = roomsManager.findRoom(roomName)
-                            val color = room.addClient(thisConnection)
-                            msg.content["userName"]?.jsonPrimitive?.content?.let {
-                                thisConnection.name = it
-                            }
+                            val color = room.addClient(thisConnection, name)
                             thisConnection.send(
                                 Message(
                                     type = Message.Type.JOIN,
@@ -138,12 +138,13 @@ fun Application.configureSockets(
                                 val data =
                                     Json.decodeFromJsonElement(Content.MoveData.serializer(), incomingMsg.content)
 
-                                // TODO synchronize data across rooms using REDIS
                                 val room = roomsManager.rooms[data.roomName]
                                 room?.let {
+                                    it.retrieveState()
                                     val newState = updateGameState(it.gameState, data.move)
                                     it.gameState = newState
                                     println("Broadcasting to ${it.roomName}, room=$it")
+                                    it.persistState()
                                     // Broadcast to peeps
                                     it.broadcast(
                                         msg = Message(
@@ -169,8 +170,8 @@ fun Application.configureSockets(
                     }
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
-                println(e.localizedMessage)
+//                e.printStackTrace()
+                println("ERROR: ${e.localizedMessage}")
             } finally {
                 println("Removing $thisConnection!")
                 val room = thisConnection.room

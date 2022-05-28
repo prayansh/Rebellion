@@ -6,7 +6,12 @@ import com.prayansh.coup.model.GameState
 import com.prayansh.coup.model.Message
 import com.prayansh.coup.model.PlayerColors
 import com.prayansh.coup.server.newGameState
+import com.prayansh.coup.server.session.RoomsManager.Companion.fromRoomMembersValue
 import com.prayansh.coup.server.session.RoomsManager.Companion.redisRoomKey
+import com.prayansh.coup.server.session.RoomsManager.Companion.redisRoomMembersKey
+import com.prayansh.coup.server.session.RoomsManager.Companion.roomMembersValue
+import com.prayansh.coup.server.session.RoomsManager.Companion.startedKey
+import com.prayansh.coup.server.session.RoomsManager.Companion.stateKey
 import io.ktor.websocket.*
 import io.lettuce.core.ExperimentalLettuceCoroutinesApi
 import io.lettuce.core.api.coroutines.RedisCoroutinesCommands
@@ -22,6 +27,14 @@ import kotlinx.serialization.json.Json
 import java.util.*
 import kotlin.random.Random
 
+/*
+Redis Storage:
+- HSET redisRoomKey()
+  - memCount (HINCRBY myhash field 1)
+  - gameStarted (HSET myhash started true)
+  - state (HSET myhash state true)
+ */
+
 class RoomsManager(
     val storeRedis: RedisCoroutinesCommands<String, String>,
     val subscribeRedis: StatefulRedisPubSubConnection<String, String>,
@@ -34,7 +47,7 @@ class RoomsManager(
         do {
             roomName = uuid()
             val exists = storeRedis.exists(redisRoomKey(roomName)) == 1L
-        } while(exists)
+        } while (exists)
         val room = Room(
             roomName = roomName,
             subscribeRedis = subscribeRedis,
@@ -52,8 +65,9 @@ class RoomsManager(
                 roomName = roomName,
                 subscribeRedis = subscribeRedis,
                 publishRedis = publishRedis,
-                storeRedis = storeRedis
+                storeRedis = storeRedis,
             )
+            r.retrieveState()
             rooms[roomName] = r
         }
         val room = rooms[roomName]
@@ -69,7 +83,17 @@ class RoomsManager(
 
     companion object {
         const val RoomsKey = "coup-rooms"
+        const val MembersKey = "coup-members"
+
         fun redisRoomKey(roomName: String) = "$RoomsKey:$roomName"
+        fun redisRoomMembersKey(roomName: String) = "$MembersKey:$roomName"
+
+        fun roomMembersValue(userName: String, color: String) = "$color::$userName"
+
+        fun fromRoomMembersValue(v: String) = v.substringBefore("::") to v.substringAfter("::")
+
+        const val startedKey = "started"
+        const val stateKey = "state"
 
         const val ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
         fun uuid(): String {
@@ -101,21 +125,41 @@ class Room(
         subscribeToChannel(roomName)
     }
 
-    suspend fun memberCount(): Int {
-        return storeRedis.scard(redisRoomKey(roomName))?.toInt() ?: 0
+    suspend fun retrieveState() {
+        gameStarted = storeRedis.hget(redisRoomKey(roomName), startedKey)?.toBoolean() ?: false
+        if (gameStarted) {
+            val stateStr =
+                storeRedis.hget(redisRoomKey(roomName), stateKey) ?: throw RuntimeException("Redis: room not found")
+            gameState = Json.decodeFromString(GameState.serializer(), stateStr)
+        }
     }
 
-    suspend fun addClient(connection: Connection): String {
+    suspend fun persistState() {
+        storeRedis.hset(redisRoomKey(roomName), startedKey, gameStarted.toString())
+        if (gameStarted) {
+            val stateStr = Json.encodeToString(GameState.serializer(), gameState)
+            storeRedis.hset(redisRoomKey(roomName), stateKey, stateStr)
+        }
+    }
+
+    suspend fun memberCount(): Int {
+        return storeRedis.llen(redisRoomMembersKey(roomName))?.toInt() ?: 0
+    }
+
+    suspend fun addClient(connection: Connection, userName: String): String {
         clients.add(connection)
-        storeRedis.sadd(redisRoomKey(roomName), connection.name)
-        val size = memberCount()
-        val color = colorSet[size - 1]
+        val count = storeRedis.llen(redisRoomMembersKey(roomName))
+        val size = count?.toInt() ?: 0
+        val color = colorSet[size]
+        storeRedis.lpush(redisRoomMembersKey(roomName), roomMembersValue(userName, color))
         connection.color = color
+        connection.name = userName
         return color
     }
 
     suspend fun addClient(session: DefaultWebSocketSession, userName: String): Connection {
-        storeRedis.sadd(redisRoomKey(roomName), userName)
+        TODO("""
+        storeRedis.hincrby(redisRoomKey(roomName), memberCountKey, 1L)
         val size = memberCount()
         val color = colorSet[size - 1]
         val connection = Connection(session).apply {
@@ -124,15 +168,19 @@ class Room(
         }
         clients.add(connection)
         return connection
+        """)
     }
 
     fun removeClient(connection: Connection) {
         clients.remove(connection)
     }
 
-    fun startGame() {
+    suspend fun startGame() {
         gameStarted = true
-        gameState = newGameState(clients)
+        val memberList = storeRedis
+            .lrange(redisRoomMembersKey(roomName), 0, -1)
+            .map { fromRoomMembersValue(it) }
+        gameState = newGameState(memberList)
     }
 
     @ExperimentalLettuceCoroutinesApi

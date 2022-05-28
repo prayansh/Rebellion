@@ -1,7 +1,6 @@
 package com.prayansh.coup.server
 
 import com.prayansh.coup.model.*
-import com.prayansh.coup.server.session.Connection
 import java.util.*
 
 // TODO write unit tests for this
@@ -395,24 +394,24 @@ fun applyMove(gs: GameState, passedMove: Move): GameState {
     return newGameState
 }
 
-fun newGameState(connections: Set<Connection>): GameState {
+fun newGameState(memberList: List<Pair<String, String>>): GameState {
     val deck: MutableList<Role> = LinkedList<Role>().apply {
         Role.values().forEach { role -> repeat(3) { add(role) } }
     }
     deck.shuffle()
-    val influences = connections.indices.map {
+    val influences = memberList.indices.map {
         val first = deck.first()
         deck.removeAt(0)
         val second = deck.first()
         deck.removeAt(0)
         Pair(Influence(first, true), Influence(second, true))
     }
-    val players = connections.mapIndexed { idx, connection ->
+    val players = memberList.mapIndexed { idx, member ->
         Player(
-            name = connection.name,
+            name = member.second,
             coins = 2,
             roles = influences[idx],
-            color = connection.color,
+            color = member.first,
         )
     }.shuffled()
     return GameState(
