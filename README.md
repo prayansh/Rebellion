@@ -1,8 +1,6 @@
-# Kotlin Compose Multiplatform with Ktor Backend
+# Rebellion
 
-This is simple application using [Compose Multiplatform][compose-mpp] for frontend and [Ktor][ktor] as backend.
-
-The main goal of the project was to obtain a simple web application served by Ktor and built with a single command.
+Full-stack web application using ktor websockets and kotlin-compose w/ KMM
 
 ## Structure
 
