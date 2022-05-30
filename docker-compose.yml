@@ -5,9 +5,9 @@ services:
     container_name: server1
     build: .
     expose:
-      - "8080"
+      - "5000"
     environment:
-      PORT: 8080
+      PORT: 5000
       REDIS_URL: redis://redis:6379
       NAME: "alibi"
   server2:
@@ -20,6 +20,16 @@ services:
       PORT: 5000
       REDIS_URL: redis://redis:6379
       NAME: "blitz"
+  server3:
+    image: "pray-coup-game"
+    container_name: server3
+    build: .
+    expose:
+      - "5000"
+    environment:
+      PORT: 5000
+      REDIS_URL: redis://redis:6379
+      NAME: "capitao"
   redis:
     image: "redis:alpine"
     ports:
