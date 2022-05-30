@@ -24,7 +24,7 @@ object Logger {
     }
 }
 
-//@JsName("enableDebug")
-//fun Window.enableDebugLogs() {
-//    Logger.level = Logger.Level.DEBUG
-//}
+@JsExport
+fun enableDebugLogs() {
+    Logger.level = Logger.Level.DEBUG
+}
