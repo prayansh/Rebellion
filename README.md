@@ -10,13 +10,11 @@ Full-stack web application using ktor websockets and kotlin-compose w/ KMM
 
 ## Running application
 
-To run sample execute:
+The application uses docker to spin up a redis instance, nginx load balancer and 3 instances of the server.
 
+```bash
+make up
 ```
-./gradlew run
-```
-
-then go with your browser to http://127.0.0.1:8080/.
 
 ## Build distribution package
 
