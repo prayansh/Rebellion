@@ -68,4 +68,8 @@ object Deps {
         const val kotestAssertions = "io.kotest:kotest-assertions-core:5.3.0"
     }
 
+    object Analytics {
+        const val segmentKotlin = "com.segment.analytics.kotlin:core:1.6.2"
+    }
+
 }

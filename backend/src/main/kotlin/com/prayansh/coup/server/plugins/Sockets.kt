@@ -2,10 +2,15 @@ package com.prayansh.coup.server.plugins
 
 import com.prayansh.coup.model.Content
 import com.prayansh.coup.model.Message
+import com.prayansh.coup.model.analytics.ApplicationError
+import com.prayansh.coup.model.analytics.GameCreated
+import com.prayansh.coup.model.analytics.GameUpdated
+import com.prayansh.coup.model.analytics.MoveProperties
 import com.prayansh.coup.server.envVar
 import com.prayansh.coup.server.session.Connection
 import com.prayansh.coup.server.session.RoomsManager
 import com.prayansh.coup.server.updateGameState
+import com.segment.analytics.kotlin.core.Analytics
 import io.ktor.server.application.*
 import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
@@ -20,7 +25,8 @@ import java.util.*
 
 @ExperimentalLettuceCoroutinesApi
 fun Application.configureSockets(
-    redisClient: RedisClient
+    redisClient: RedisClient,
+    analytics: Analytics
 ) {
     val serverName = envVar("NAME", "unknown")
     val publishRedis = redisClient.connectPubSub()
@@ -33,9 +39,10 @@ fun Application.configureSockets(
         masking = false
     }
     routing {
+        // TODO add analytics somehow, to track how often rooms are created and stuff
         val roomsManager = RoomsManager(storeRedis, subscribeRedis, publishRedis)
         webSocket("/coup") {
-            println("Adding user!")
+            analytics.track("User Connected")
             val thisConnection = Connection(this)
             try {
                 // Connect to main room
@@ -71,6 +78,7 @@ fun Application.configureSockets(
                                 )
                             )
                         )
+                        analytics.track("Game Created", GameCreated(roomName = room.roomName, creator = userName))
                         thisConnection.room = room
                         println("Waiting for start")
                         // WAIT FOR START, but only for creator
@@ -91,6 +99,7 @@ fun Application.configureSockets(
                                     )
                                 )
                             )
+                            analytics.track("Game Started", room.gameState)
                         } else {
                             thisConnection.sendError("expected start Message")
                         }
@@ -134,9 +143,16 @@ fun Application.configureSockets(
                         Message.Type.MOVE -> {
                             try {
                                 val data = incomingMsg.content as Content.MoveData
-
                                 val room = roomsManager.rooms[data.roomName]
                                 room?.let {
+                                    analytics.track(
+                                        "Move Performed",
+                                        MoveProperties(
+                                            roomName = it.roomName,
+                                            gameState = it.gameState,
+                                            move = data.move
+                                        )
+                                    )
                                     it.retrieveState()
                                     val newState = updateGameState(it.gameState, data.move)
                                     it.gameState = newState
@@ -153,6 +169,13 @@ fun Application.configureSockets(
                                             )
                                         )
                                     )
+                                    analytics.track(
+                                        "Game Updated",
+                                        GameUpdated(
+                                            roomName = it.roomName,
+                                            gameState = it.gameState,
+                                        )
+                                    )
                                 }
                             } catch (ex: Exception) {
                                 ex.printStackTrace()
@@ -165,6 +188,7 @@ fun Application.configureSockets(
                 }
             } catch (e: Exception) {
 //                e.printStackTrace()
+                analytics.track("Application Error", ApplicationError(cause = e.localizedMessage))
                 println("ERROR: ${e.localizedMessage}")
             } finally {
                 println("Removing $thisConnection!")

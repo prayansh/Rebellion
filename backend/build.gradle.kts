@@ -17,6 +17,7 @@ dependencies {
     implementation(Deps.Ktor.Server.websockets)
     implementation(Deps.Ktor.serializationJson)
     implementation(Deps.Logback.classic)
+    implementation(Deps.Analytics.segmentKotlin)
     implementation("io.lettuce:lettuce-core:6.1.8.RELEASE")
     runtimeOnly("org.jetbrains.kotlinx:kotlinx-coroutines-reactive:1.6.1") // needed for lettuce-coroutines-apis
 
